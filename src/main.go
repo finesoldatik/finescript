@@ -48,11 +48,10 @@ func main() {
 			durationParser := time.Since(startParser)
 
 			startInterpreter := time.Now()
-			env := runtime.GlobalEnv()
 			if showTokens || showAST || showResult || showTime {
 				println("RUNTIME:===============================")
 			}
-			result := runtime.EvaluateStmt(ast, env)
+			result := runtime.EvaluateStmt(ast, runtime.GlobalEnv())
 			println()
 			durationInterpreter := time.Since(startInterpreter)
 

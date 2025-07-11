@@ -56,8 +56,17 @@ func evalArithmetiсOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer
 	case lexer.PLUS:
 		switch leftType := leftVal.(type) {
 		case IntVal:
-			return FloatVal{
-				Value: ToFloat(leftType).Value + ToFloat(rightVal).Value,
+			switch right := rightVal.(type) {
+			case IntVal:
+				return IntVal{
+					Value: leftType.Value + right.Value,
+				}
+			case FloatVal:
+				return FloatVal{
+					Value: ToFloat(leftType).Value + right.Value,
+				}
+			default:
+				panic("These types cannot be added to each other.")
 			}
 		case FloatVal:
 			return FloatVal{
@@ -78,8 +87,17 @@ func evalArithmetiсOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer
 	case lexer.MINUS:
 		switch leftType := leftVal.(type) {
 		case IntVal:
-			return FloatVal{
-				Value: ToFloat(leftType).Value - ToFloat(rightVal).Value,
+			switch right := rightVal.(type) {
+			case IntVal:
+				return IntVal{
+					Value: leftType.Value - right.Value,
+				}
+			case FloatVal:
+				return FloatVal{
+					Value: ToFloat(leftType).Value - right.Value,
+				}
+			default:
+				panic("These types cannot be subtracted from each other.")
 			}
 		case FloatVal:
 			return FloatVal{
@@ -92,8 +110,17 @@ func evalArithmetiсOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer
 	case lexer.STAR:
 		switch leftType := leftVal.(type) {
 		case IntVal:
-			return FloatVal{
-				Value: ToFloat(leftType).Value * ToFloat(rightVal).Value,
+			switch right := rightVal.(type) {
+			case IntVal:
+				return IntVal{
+					Value: leftType.Value * right.Value,
+				}
+			case FloatVal:
+				return FloatVal{
+					Value: ToFloat(leftType).Value * right.Value,
+				}
+			default:
+				panic("These types cannot be multiplied by each other.")
 			}
 		case FloatVal:
 			return FloatVal{
@@ -119,8 +146,17 @@ func evalArithmetiсOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer
 	case lexer.SLASH:
 		switch leftType := leftVal.(type) {
 		case IntVal:
-			return FloatVal{
-				Value: ToFloat(leftType).Value / ToFloat(rightVal).Value,
+			switch right := rightVal.(type) {
+			case IntVal:
+				return IntVal{
+					Value: leftType.Value / right.Value,
+				}
+			case FloatVal:
+				return FloatVal{
+					Value: ToFloat(leftType).Value / right.Value,
+				}
+			default:
+				panic("These types cannot be a divided from each other.")
 			}
 		case FloatVal:
 			return FloatVal{

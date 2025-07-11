@@ -50,6 +50,11 @@ func GlobalEnv() Environment {
 		Call: Input,
 	}, true)
 
+	env.declareVar("eval", NativeFnVal{
+		Name: "eval",
+		Call: Eval,
+	}, true)
+
 	// env.declareVar("len", NativeFnVal{
 	// 	Name: "len",
 	// 	Call: nativeLen,

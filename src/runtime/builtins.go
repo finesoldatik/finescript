@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"bufio"
+	"finescript/src/lexer"
+	"finescript/src/parser"
 	"fmt"
 	"os"
 	"strings"
@@ -69,6 +71,18 @@ func Input(args []RuntimeVal, env Environment) RuntimeVal {
 	return StringVal{
 		Value: strings.TrimSpace(text),
 	}
+}
+
+func Eval(args []RuntimeVal, env Environment) RuntimeVal {
+	handleArgs(len(args), 1)
+	if _, ok := args[0].(StringVal); ok {
+		tokens := lexer.Tokenize(args[0].(StringVal).Value)
+		ast := parser.Parse(tokens, args[0].(StringVal).Value)
+		result := EvaluateStmt(ast, GlobalEnv())
+		return result
+	}
+
+	panic("String required for eval function")
 }
 
 // func nativeLen(args []RuntimeVal, env Environment) RuntimeVal {
