@@ -34,17 +34,17 @@ type NullVal struct{}
 
 func (r NullVal) runtime_val() {}
 
-type ArrayVal struct {
-	Elements []RuntimeVal
-}
+// type ArrayVal struct {
+// 	Elements []RuntimeVal
+// }
 
-func (r ArrayVal) runtime_val() {}
+// func (r ArrayVal) runtime_val() {}
 
-type ObjectVal struct {
-	Elements map[string]RuntimeVal
-}
+// type ObjectVal struct {
+// 	Elements map[string]RuntimeVal
+// }
 
-func (r ObjectVal) runtime_val() {}
+// func (r ObjectVal) runtime_val() {}
 
 type FunctionVal struct {
 	Name           string

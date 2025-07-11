@@ -45,10 +45,15 @@ func GlobalEnv() Environment {
 		Call: nativeBool,
 	}, true)
 
-	env.declareVar("len", NativeFnVal{
-		Name: "len",
-		Call: nativeLen,
+	env.declareVar("input", NativeFnVal{
+		Name: "input",
+		Call: nativeInput,
 	}, true)
+
+	// env.declareVar("len", NativeFnVal{
+	// 	Name: "len",
+	// 	Call: nativeLen,
+	// }, true)
 
 	return env
 }

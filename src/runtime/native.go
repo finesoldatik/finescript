@@ -1,5 +1,12 @@
 package runtime
 
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
 func handleArgs(argsCount int, paramCount int) {
 	if argsCount > paramCount {
 		panic("There are more arguments than parameters for the function.")
@@ -44,9 +51,29 @@ func nativeBool(args []RuntimeVal, env Environment) RuntimeVal {
 	return ToBool(args[0])
 }
 
-func nativeLen(args []RuntimeVal, env Environment) RuntimeVal {
+func nativeInput(args []RuntimeVal, env Environment) RuntimeVal {
+	if len(args) == 0 {
+		args = []RuntimeVal{
+			StringVal{
+				Value: "",
+			},
+		}
+	}
 	handleArgs(len(args), 1)
-	return IntVal{
-		Value: int64(len(args[0].(ArrayVal).Elements)),
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(ToString(args[0]).Value)
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		panic(err)
+	}
+	return StringVal{
+		Value: strings.TrimSpace(text),
 	}
 }
+
+// func nativeLen(args []RuntimeVal, env Environment) RuntimeVal {
+// 	handleArgs(len(args), 1)
+// 	return IntVal{
+// 		Value: int64(len(args[0].(ArrayVal).Elements)),
+// 	}
+// }

@@ -8,18 +8,11 @@ import (
 )
 
 func parseExpr(p *parser, bp binding_power) ast.Expr {
-	startPos := p.currentToken().Pos
 	tokenKind := p.currentTokenKind()
 	nud_fn, exists := nud_lu[tokenKind]
 
 	if !exists {
-		panic(lexer.FormatError(p.initialSource, &lexer.Position{
-			StartLine:   startPos.StartLine,
-			StartColumn: startPos.StartColumn,
-			EndLine:     p.currentToken().Pos.EndLine,
-			EndColumn:   p.currentToken().Pos.EndColumn,
-			Index:       startPos.Index,
-		}, fmt.Sprintf("NUD Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), startPos.String())))
+		panic(fmt.Sprintf("NUD Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
 	}
 
 	left := nud_fn(p)
@@ -29,82 +22,80 @@ func parseExpr(p *parser, bp binding_power) ast.Expr {
 		led_fn, exists := led_lu[tokenKind]
 
 		if !exists {
-			panic(lexer.FormatError(p.initialSource, &lexer.Position{
-				StartLine:   startPos.StartLine,
-				StartColumn: startPos.StartColumn,
-				EndLine:     p.currentToken().Pos.EndLine,
-				EndColumn:   p.currentToken().Pos.EndColumn,
-				Index:       startPos.Index,
-			}, fmt.Sprintf("LED Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), startPos.String())))
+			panic(fmt.Sprintf("LED Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
 		}
 
 		left = led_fn(p, left, bp)
+	}
+
+	if p.currentTokenKind() == lexer.SEMI_COLON {
+		p.advance()
 	}
 
 	return left
 }
 
 func parsePrimaryExpr(p *parser) ast.Expr {
-	pos := p.currentToken().Pos
 	switch p.currentTokenKind() {
 	case lexer.INT:
-		number, _ := strconv.ParseInt(p.advance().Value, 0, 64)
+		token := p.advance()
+		number, _ := strconv.ParseInt(token.Value, 0, 64)
 		return ast.IntLiteral{
-			Value: number,
-			Pos:   pos,
+			Value:    number,
+			Position: token.Position,
 		}
 	case lexer.FLOAT:
-		number, _ := strconv.ParseFloat(p.advance().Value, 64)
+		token := p.advance()
+		number, _ := strconv.ParseFloat(token.Value, 64)
 		return ast.FloatLiteral{
-			Value: number,
-			Pos:   pos,
+			Value:    number,
+			Position: token.Position,
 		}
 	case lexer.STRING:
+		token := p.advance()
 		return ast.StringLiteral{
-			Value: p.advance().Value,
-			Pos:   pos,
+			Value:    token.Value,
+			Position: token.Position,
 		}
 	case lexer.IDENTIFIER:
+		token := p.advance()
 		return ast.Identifier{
-			Name: p.advance().Value,
-			Pos:  pos,
+			Name:     token.Value,
+			Position: token.Position,
 		}
 	case lexer.NULL:
-		p.advance()
 		return ast.NullLiteral{
-			Pos: pos,
+			Position: p.advance().Position,
+		}
+	case lexer.UNDEFINED:
+		return ast.UndefinedLiteral{
+			Position: p.advance().Position,
 		}
 	case lexer.TRUE:
-		p.advance()
 		return ast.BoolLiteral{
-			Value: true,
-			Pos:   pos,
+			Value:    true,
+			Position: p.advance().Position,
 		}
 	case lexer.FALSE:
-		p.advance()
 		return ast.BoolLiteral{
-			Value: false,
-			Pos:   pos,
+			Value:    false,
+			Position: p.advance().Position,
 		}
 	default:
-		panic(fmt.Sprintf("Cannot create primary_expr from %s\n", lexer.TokenKindString(p.currentTokenKind())))
+		panic(fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(p.currentTokenKind()), p.currentToken().Position.ToString()))
 	}
 }
 
 func parseUnaryExpr(p *parser) ast.Expr {
-	pos := p.currentToken().Pos
 	operatorToken := p.advance()
 	expr := parseExpr(p, unary)
 
 	return ast.UnaryExpr{
-		Op:    operatorToken,
-		Value: expr,
-		Pos: &lexer.Position{
-			StartLine:   pos.StartLine,
-			StartColumn: pos.StartColumn,
-			EndLine:     expr.Position().EndLine,
-			EndColumn:   expr.Position().EndColumn,
-			Index:       pos.Index,
+		Op:   operatorToken,
+		Expr: expr,
+		Position: lexer.Position{
+			StartPos: operatorToken.Position.StartPos,
+			EndPos:   expr.Pos().EndPos,
 		},
 	}
 }
@@ -112,36 +103,26 @@ func parseUnaryExpr(p *parser) ast.Expr {
 func parseLedUnaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	operatorToken := p.advance()
 
-	if p.currentTokenKind() == lexer.SEMI_COLON {
-		p.advance()
-	}
-
 	return ast.UnaryExpr{
-		Op:    operatorToken,
-		Value: left,
-		Pos: &lexer.Position{
-			StartLine:   left.Position().StartLine,
-			StartColumn: left.Position().StartColumn,
-			EndLine:     operatorToken.Pos.EndLine,
-			EndColumn:   operatorToken.Pos.EndColumn,
-			Index:       left.Position().Index,
+		Op:   operatorToken,
+		Expr: left,
+		Position: lexer.Position{
+			StartPos: operatorToken.Position.StartPos,
+			EndPos:   left.Pos().EndPos,
 		},
 	}
 }
 
 func parseAssignExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	p.advance()
-	rhs := parseExpr(p, bp)
+	expr := parseExpr(p, bp)
 
 	return ast.AssignExpr{
-		Left:  left,
-		Right: rhs,
-		Pos: &lexer.Position{
-			StartLine:   left.Position().StartLine,
-			StartColumn: left.Position().StartColumn,
-			EndLine:     rhs.Position().EndLine,
-			EndColumn:   rhs.Position().EndColumn,
-			Index:       left.Position().Index,
+		Assigne: left,
+		Expr:    expr,
+		Position: lexer.Position{
+			StartPos: left.Pos().StartPos,
+			EndPos:   expr.Pos().EndPos,
 		},
 	}
 }
@@ -154,120 +135,27 @@ func parseBinaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 		Left:  left,
 		Op:    operatorToken,
 		Right: right,
-		Pos: &lexer.Position{
-			StartLine:   left.Position().StartLine,
-			StartColumn: left.Position().StartColumn,
-			EndLine:     right.Position().EndLine,
-			EndColumn:   right.Position().EndColumn,
-			Index:       left.Position().Index,
+		Position: lexer.Position{
+			StartPos: left.Pos().StartPos,
+			EndPos:   right.Pos().EndPos,
 		},
-	}
-}
-
-func parseMemberExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
-	firstToken := p.advance()
-	isComputed := firstToken.Kind == lexer.OPEN_BRACKET
-
-	if isComputed {
-		rhs := parseExpr(p, bp)
-		end := p.expect(lexer.CLOSE_BRACKET, &lexer.Position{
-			StartLine:   firstToken.Pos.StartLine,
-			StartColumn: firstToken.Pos.StartColumn,
-			EndLine:     p.currentToken().Pos.EndLine,
-			EndColumn:   p.currentToken().Pos.EndColumn,
-			Index:       firstToken.Pos.Index,
-		})
-		return ast.MemberExpr{
-			Object: left,
-			Field:  rhs,
-			Pos: &lexer.Position{
-				StartLine:   left.Position().StartLine,
-				StartColumn: left.Position().StartColumn,
-				EndLine:     end.Pos.EndLine,
-				EndColumn:   end.Pos.EndColumn,
-				Index:       left.Position().Index,
-			},
-		}
-	}
-
-	endPos := &lexer.Position{
-		StartLine:   left.Position().StartLine,
-		StartColumn: left.Position().StartColumn,
-		EndLine:     p.currentToken().Pos.EndLine,
-		EndColumn:   p.currentToken().Pos.EndColumn,
-		Index:       left.Position().Index,
-	}
-	ident := p.expect(lexer.IDENTIFIER, endPos)
-	return ast.MemberExpr{
-		Object: left,
-		Field: ast.Identifier{
-			Name: ident.Value,
-		},
-		Pos: endPos,
-	}
-}
-
-func parseArrayLiteralExpr(p *parser) ast.Expr {
-	startPos := p.currentToken().Pos
-	p.advance()
-	arrayContents := make([]ast.Expr, 0)
-
-	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_BRACKET {
-		elemPos := p.currentToken().Pos
-		arrayContents = append(arrayContents, parseExpr(p, logical))
-
-		if !p.currentToken().IsOneOfMany(lexer.EOF, lexer.CLOSE_BRACKET) {
-			p.expect(lexer.COMMA, &lexer.Position{
-				StartLine:   startPos.StartLine,
-				StartColumn: startPos.StartColumn,
-				EndLine:     elemPos.EndLine,
-				EndColumn:   elemPos.EndColumn,
-				Index:       startPos.Index,
-			})
-		}
-	}
-
-	if p.currentTokenKind() == lexer.COMMA {
-		p.advance()
-	}
-
-	endPos := &lexer.Position{
-		StartLine:   startPos.StartLine,
-		StartColumn: startPos.StartColumn,
-		EndLine:     p.currentToken().Pos.EndLine,
-		EndColumn:   p.currentToken().Pos.EndColumn,
-		Index:       startPos.Index,
-	}
-	p.expect(lexer.CLOSE_BRACKET, endPos)
-	return ast.ArrayLiteral{
-		Elements: arrayContents,
-		Pos:      endPos,
 	}
 }
 
 func parseGroupingExpr(p *parser) ast.Expr {
-	startPos := p.advance().Pos
+	p.advance()
 	expr := parseExpr(p, defalt_bp)
 
 	if p.currentTokenKind() == lexer.SEMI_COLON {
 		p.advance()
 	}
 
-	endPos := &lexer.Position{
-		StartLine:   startPos.StartLine,
-		StartColumn: startPos.StartColumn,
-		EndLine:     p.currentToken().Pos.EndLine,
-		EndColumn:   p.currentToken().Pos.EndColumn,
-		Index:       startPos.Index,
-	}
-
-	p.expect(lexer.CLOSE_PAREN, endPos)
+	p.expect(lexer.CLOSE_PAREN)
 	return expr
 }
 
 func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
-	startPos := p.currentToken().Pos
-	p.advance()
+	startPos := p.advance().Position.StartPos
 	arguments := make([]ast.Expr, 0)
 
 	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
@@ -277,13 +165,7 @@ func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 			if p.currentTokenKind() == lexer.COMMA {
 				p.advance()
 			} else {
-				p.expect(lexer.SEMI_COLON, &lexer.Position{
-					StartLine:   startPos.StartLine,
-					StartColumn: startPos.StartColumn,
-					EndLine:     p.currentToken().Pos.EndLine,
-					EndColumn:   p.currentToken().Pos.EndColumn,
-					Index:       startPos.Index,
-				})
+				p.expect(lexer.SEMI_COLON)
 			}
 		}
 	}
@@ -294,17 +176,12 @@ func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 		p.advance()
 	}
 
-	endPos := &lexer.Position{
-		StartLine:   startPos.StartLine,
-		StartColumn: startPos.StartColumn,
-		EndLine:     p.currentToken().Pos.EndLine,
-		EndColumn:   p.currentToken().Pos.EndColumn,
-		Index:       startPos.Index,
-	}
-	p.expect(lexer.CLOSE_PAREN, endPos)
 	return ast.CallExpr{
 		Caller: left,
 		Args:   arguments,
-		Pos:    endPos,
+		Position: lexer.Position{
+			StartPos: startPos,
+			EndPos:   p.expect(lexer.CLOSE_PAREN).Position.EndPos,
+		},
 	}
 }

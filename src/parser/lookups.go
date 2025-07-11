@@ -9,7 +9,6 @@ type binding_power int
 
 const (
 	defalt_bp binding_power = iota
-	comma
 	assignment
 	logical
 	relational
@@ -40,7 +39,7 @@ func led(kind lexer.TokenKind, bp binding_power, led_fn led_handler) {
 	led_lu[kind] = led_fn
 }
 
-func nud(kind lexer.TokenKind, bp binding_power, nud_fn nud_handler) {
+func nud(kind lexer.TokenKind, nud_fn nud_handler) {
 	bp_lu[kind] = primary
 	nud_lu[kind] = nud_fn
 }
@@ -74,32 +73,31 @@ func createTokenLookups() {
 	led(lexer.SLASH, multiplicative, parseBinaryExpr)
 	led(lexer.STAR, multiplicative, parseBinaryExpr)
 	led(lexer.PERCENT, multiplicative, parseBinaryExpr)
-	led(lexer.STAR_STAR, multiplicative, parseBinaryExpr)
 
 	// Literals & Symbols
-	nud(lexer.INT, primary, parsePrimaryExpr)
-	nud(lexer.FLOAT, primary, parsePrimaryExpr)
-	nud(lexer.STRING, primary, parsePrimaryExpr)
-	nud(lexer.IDENTIFIER, primary, parsePrimaryExpr)
-	nud(lexer.TRUE, primary, parsePrimaryExpr)
-	nud(lexer.FALSE, primary, parsePrimaryExpr)
+	nud(lexer.INT, parsePrimaryExpr)
+	nud(lexer.FLOAT, parsePrimaryExpr)
+	nud(lexer.STRING, parsePrimaryExpr)
+	nud(lexer.IDENTIFIER, parsePrimaryExpr)
+	nud(lexer.TRUE, parsePrimaryExpr)
+	nud(lexer.FALSE, parsePrimaryExpr)
 
 	// Unary/Prefix
-	nud(lexer.MINUS, unary, parseUnaryExpr)
-	nud(lexer.NOT, unary, parseUnaryExpr)
-	nud(lexer.PLUS_PLUS, unary, parseUnaryExpr)
-	nud(lexer.MINUS_MINUS, unary, parseUnaryExpr)
+	nud(lexer.MINUS, parseUnaryExpr)
+	nud(lexer.NOT, parseUnaryExpr)
+	nud(lexer.PLUS_PLUS, parseUnaryExpr)
+	nud(lexer.MINUS_MINUS, parseUnaryExpr)
 	led(lexer.PLUS_PLUS, unary, parseLedUnaryExpr)
 	led(lexer.MINUS_MINUS, unary, parseLedUnaryExpr)
-	nud(lexer.OPEN_BRACKET, primary, parseArrayLiteralExpr)
+	// nud(lexer.OPEN_BRACKET, parseArrayLiteralExpr)
 
 	// Member / Computed // Call
-	led(lexer.DOT, member, parseMemberExpr)
-	led(lexer.OPEN_BRACKET, member, parseMemberExpr)
+	// led(lexer.DOT, member, parseMemberExpr)
+	// led(lexer.OPEN_BRACKET, member, parseMemberExpr)
 	led(lexer.OPEN_PAREN, call, parseCallExpr)
 
 	// Grouping Expr
-	nud(lexer.OPEN_PAREN, defalt_bp, parseGroupingExpr)
+	nud(lexer.OPEN_PAREN, parseGroupingExpr)
 
 	// Stmt
 	stmt(lexer.OPEN_CURLY, parseBlockStmt)
@@ -108,7 +106,4 @@ func createTokenLookups() {
 	stmt(lexer.CONST, parseVarDeclStmt)
 	stmt(lexer.FUN, parseFunDeclaration)
 	stmt(lexer.IF, parseIfStmt)
-	stmt(lexer.LOOP, parseLoopStmt)
-	stmt(lexer.BREAK, parseLoopControl)
-	stmt(lexer.CONTINUE, parseLoopControl)
 }

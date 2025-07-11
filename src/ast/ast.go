@@ -5,16 +5,19 @@ import (
 	"finescript/src/lexer"
 )
 
-// Утверждение
 type Stmt interface {
 	stmt()
-	Position() *lexer.Position
+	Pos() lexer.Position
 }
 
-// Выражение
 type Expr interface {
 	expr()
-	Position() *lexer.Position
+	Pos() lexer.Position
+}
+
+type Type interface {
+	_type()
+	Pos() lexer.Position
 }
 
 func ExpectExpr[T Expr](expr Expr) T {

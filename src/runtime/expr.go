@@ -3,7 +3,6 @@ package runtime
 import (
 	"finescript/src/ast"
 	"finescript/src/lexer"
-	"math"
 )
 
 func evalLogicalOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer.Token) RuntimeVal {
@@ -144,10 +143,6 @@ func evalArithmetiсOperations(leftVal RuntimeVal, rightVal RuntimeVal, Op lexer
 		default:
 			panic("These types cannot be separated from each other using a remainder.")
 		}
-	case lexer.STAR_STAR:
-		return FloatVal{
-			Value: math.Pow(ToFloat(leftVal).Value, ToFloat(rightVal).Value),
-		}
 	default:
 		return evalComparisonOperations(leftVal, rightVal, Op)
 	}
@@ -161,7 +156,7 @@ func evalBinaryExpr(expr ast.BinaryExpr, env Environment) RuntimeVal {
 }
 
 func evalUnaryExpr(expr ast.UnaryExpr, env Environment) RuntimeVal {
-	value := evaluateExpr(expr.Value, env)
+	value := evaluateExpr(expr.Expr, env)
 	switch expr.Op.Kind {
 	case lexer.MINUS:
 		return FloatVal{
@@ -175,7 +170,7 @@ func evalUnaryExpr(expr ast.UnaryExpr, env Environment) RuntimeVal {
 		var result RuntimeVal = FloatVal{
 			Value: ToFloat(value).Value + 1,
 		}
-		switch ident := expr.Value.(type) {
+		switch ident := expr.Expr.(type) {
 		case ast.Identifier:
 			env.assignVar(ident.Name, result)
 		}
@@ -184,7 +179,7 @@ func evalUnaryExpr(expr ast.UnaryExpr, env Environment) RuntimeVal {
 		var result RuntimeVal = FloatVal{
 			Value: ToFloat(value).Value - 1,
 		}
-		switch ident := expr.Value.(type) {
+		switch ident := expr.Expr.(type) {
 		case ast.Identifier:
 			env.assignVar(ident.Name, result)
 		}
@@ -212,9 +207,9 @@ func evalCallExpr(expr ast.CallExpr, env Environment) RuntimeVal {
 
 		for i, param := range callerType.Params {
 			if len(callerType.Params) > len(args) {
-				panic("Malo argumentov")
+				panic("Arg num less then Param num")
 			} else if len(callerType.Params) < len(args) {
-				panic("Mnogo argumentov")
+				panic("Arg num more then Param num")
 			}
 			scope.declareVar(param, args[i], false)
 		}
@@ -231,9 +226,9 @@ func evalCallExpr(expr ast.CallExpr, env Environment) RuntimeVal {
 }
 
 func evalAssignExpr(expr ast.AssignExpr, env Environment) RuntimeVal {
-	switch left := expr.Left.(type) {
+	switch left := expr.Assigne.(type) {
 	case ast.Identifier:
-		right := evaluateExpr(expr.Right, env)
+		right := evaluateExpr(expr.Expr, env)
 		return env.assignVar(left.Name, right)
 	default:
 		panic("Invalid left hand side expr inside assignment expr")

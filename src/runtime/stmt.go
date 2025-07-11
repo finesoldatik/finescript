@@ -50,32 +50,3 @@ func evalIfStmt(stmt ast.IfStmt, env Environment) RuntimeVal {
 
 	return NullVal{}
 }
-
-// func evalLoopStmt(stmt ast.LoopStmt, env Environment) RuntimeVal {
-// 	state := 0
-// 	for {
-// 		scope := Environment{
-// 			parent:    &env,
-// 			variables: make(map[string]variable),
-// 		}
-
-// 		for _, bodyStmt := range stmt.Body {
-// 			switch bodyStmt.(type) {
-// 			case ast.ContinueStmt:
-// 				state = 1
-// 			case ast.BreakStmt:
-// 				state = 2
-// 			default:
-// 				EvaluateStmt(bodyStmt, scope)
-// 			}
-// 		}
-
-// 		if state == 1 {
-// 			continue
-// 		} else if state == 2 {
-// 			break
-// 		}
-// 	}
-
-// 	return NullVal{}
-// }

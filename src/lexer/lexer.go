@@ -4,24 +4,21 @@ import (
 	"finescript/src/helpers"
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 var escapeRegex = regexp.MustCompile(`\\(?:[nrt\\'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})`)
 
+type regexHandler func(lex *lexer, regex *regexp.Regexp)
 type regexPattern struct {
 	regex   *regexp.Regexp
 	handler regexHandler
 }
 
 type lexer struct {
-	patterns      []regexPattern
-	Tokens        []Token
-	source        string
-	initialSource string
-	pos           int
-	line          int
-	lineStart     int
+	patterns []regexPattern
+	Tokens   []Token
+	source   string
+	pos      int
 }
 
 func Tokenize(source string) []Token {
@@ -40,27 +37,20 @@ func Tokenize(source string) []Token {
 		}
 
 		if !matched {
-			lex.error("unrecognized token near \"%v\"", helpers.Ellipsis(lex.remainder(), 20))
+			panic(fmt.Sprintf("unrecognized token near \"%v\" at %d", helpers.Ellipsis(lex.remainder(), 20), lex.pos))
 		}
 	}
 
-	lex.push(newToken(EOF, "EOF", lex.currentPosition(0)))
+	lex.push(Token{EOF, "eof", Position{
+		StartPos: lex.pos,
+		EndPos:   lex.pos,
+	}})
 	return lex.Tokens
 }
 
-func (lex *lexer) currentPosition(length int) *Position {
-	startCol := lex.pos - lex.lineStart + 1
-	return &Position{
-		StartLine:   lex.line,
-		StartColumn: startCol,
-		EndLine:     lex.line,
-		EndColumn:   startCol + length - 1,
-		Index:       lex.pos,
-	}
-}
-
-func (lex *lexer) advanceN(n int) {
+func (lex *lexer) advanceN(n int) int {
 	lex.pos += n
+	return lex.pos
 }
 
 // func (lex *lexer) at() byte {
@@ -83,20 +73,11 @@ func (lex *lexer) at_eof() bool {
 	return lex.pos >= len(lex.source)
 }
 
-func (lex *lexer) error(format string, args ...interface{}) {
-	pos := lex.currentPosition(0)
-	msg := fmt.Sprintf(format, args...)
-	panic(FormatError(lex.initialSource, pos, msg))
-}
-
 func createLexer(source string) *lexer {
 	return &lexer{
-		pos:           0,
-		line:          1,
-		lineStart:     0,
-		source:        source,
-		initialSource: source,
-		Tokens:        make([]Token, 0),
+		pos:    0,
+		source: source,
+		Tokens: make([]Token, 0),
 		patterns: []regexPattern{
 			{regexp.MustCompile(`\/\/.*|\/\*[\s\S]*?\*\/`), commentHandler},
 			{regexp.MustCompile(`\s+`), skipHandler},
@@ -129,7 +110,6 @@ func createLexer(source string) *lexer {
 			{regexp.MustCompile(`,`), defaultHandler(COMMA, ",")},
 			{regexp.MustCompile(`\+\+`), defaultHandler(PLUS_PLUS, "++")},
 			{regexp.MustCompile(`--`), defaultHandler(MINUS_MINUS, "--")},
-			{regexp.MustCompile(`\*\*`), defaultHandler(STAR_STAR, "**")},
 			{regexp.MustCompile(`\+=`), defaultHandler(PLUS_EQUALS, "+=")},
 			{regexp.MustCompile(`-=`), defaultHandler(MINUS_EQUALS, "-=")},
 			{regexp.MustCompile(`/=`), defaultHandler(SLASH_EQUALS, "/=")},
@@ -144,76 +124,66 @@ func createLexer(source string) *lexer {
 	}
 }
 
-type regexHandler func(lex *lexer, regex *regexp.Regexp)
-
 func defaultHandler(kind TokenKind, value string) regexHandler {
 	return func(lex *lexer, _ *regexp.Regexp) {
-		pos := lex.currentPosition(len(value))
-		lex.advanceN(len(value))
-		lex.push(newToken(kind, value, pos))
+		lex.push(Token{kind, value, Position{
+			StartPos: lex.pos,
+			EndPos:   lex.advanceN(len(value)),
+		}})
 	}
 }
 
 func stringHandler(lex *lexer, regex *regexp.Regexp) {
-	startPos := lex.currentPosition(0)
-
+	startPos := lex.pos
 	match := regex.FindStringIndex(lex.remainder())
 	if match == nil {
-		lex.error("unterminated string near '%v'", lex.remainder())
+		panic(fmt.Sprintf("unterminated string near \"%v\" at %d", lex.remainder(), lex.pos))
 	}
 
 	stringWithQuotes := lex.remainder()[match[0]:match[1]]
 
-	lineCount := strings.Count(stringWithQuotes, "\n")
-	endLine := lex.line + lineCount
-	lastNewline := strings.LastIndex(stringWithQuotes, "\n")
-	var endColumn = len(stringWithQuotes) - lastNewline - 1 // -1 для учета кавычки
-
-	if lineCount == 0 {
-		endColumn = startPos.StartColumn + len(stringWithQuotes) - 1
-	} else {
-		endColumn = len(stringWithQuotes[lastNewline+1:])
-	}
-
-	pos := &Position{
-		StartLine:   lex.line,
-		StartColumn: startPos.StartColumn,
-		EndLine:     endLine,
-		EndColumn:   endColumn,
-		Index:       startPos.Index,
-	}
-
-	lex.handleNewlines(stringWithQuotes)
-
 	stringLiteral := stringWithQuotes[1 : len(stringWithQuotes)-1]
 	stringLiteral = escapeRegex.ReplaceAllStringFunc(stringLiteral, helpers.RemoveEscapeSigns)
 
-	lex.push(newToken(STRING, stringLiteral, pos))
-	lex.advanceN(len(stringWithQuotes))
+	lex.push(Token{STRING, stringLiteral, Position{
+		StartPos: startPos,
+		EndPos:   lex.advanceN(len(stringWithQuotes)),
+	}})
 }
 
 func floatHandler(lex *lexer, regex *regexp.Regexp) {
+	startPos := lex.pos
 	match := regex.FindString(lex.remainder())
-	lex.push(newToken(FLOAT, match, lex.currentPosition(len(match))))
-	lex.advanceN(len(match))
+	lex.push(Token{FLOAT, match, Position{
+		StartPos: startPos,
+		EndPos:   lex.advanceN(len(match)),
+	}})
 }
 
 func intHandler(lex *lexer, regex *regexp.Regexp) {
+	startPos := lex.pos
 	match := regex.FindString(lex.remainder())
-	lex.push(newToken(INT, match, lex.currentPosition(len(match))))
-	lex.advanceN(len(match))
+	lex.push(Token{INT, match, Position{
+		StartPos: startPos,
+		EndPos:   lex.advanceN(len(match)),
+	}})
 }
 
 func identifierHandler(lex *lexer, regex *regexp.Regexp) {
+	startPos := lex.pos
 	match := regex.FindString(lex.remainder())
 
-	if kind, found := reserved_lu[match]; found {
-		lex.push(newToken(kind, match, lex.currentPosition(len(match))))
+	if kind, found := keywords[match]; found {
+		lex.push(Token{kind, match, Position{
+			StartPos: startPos,
+			EndPos:   lex.advanceN(len(match)),
+		}})
 	} else {
-		lex.push(newToken(IDENTIFIER, match, lex.currentPosition(len(match))))
+		lex.push(Token{IDENTIFIER, match, Position{
+			StartPos: startPos,
+			EndPos:   lex.advanceN(len(match)),
+		}})
 	}
-
-	lex.advanceN(len(match))
 }
 
 func skipHandler(lex *lexer, regex *regexp.Regexp) {
@@ -221,7 +191,6 @@ func skipHandler(lex *lexer, regex *regexp.Regexp) {
 	if match == "" {
 		return
 	}
-	lex.handleNewlines(match)
 	lex.advanceN(len(match))
 }
 
@@ -230,46 +199,5 @@ func commentHandler(lex *lexer, regex *regexp.Regexp) {
 	if match == "" {
 		return
 	}
-	lex.handleNewlines(match)
 	lex.advanceN(len(match)) // Пропускаем комментарий полностью
-}
-
-func (lex *lexer) handleNewlines(s string) {
-	for i, c := range s {
-		if c == '\n' {
-			lex.line++
-			lex.lineStart = lex.pos + i + 1
-		}
-	}
-}
-
-func FormatError(source string, pos *Position, message string) string {
-	lines := strings.Split(source, "\n")
-
-	errorLines := lines[pos.StartLine-1 : pos.EndLine]
-
-	var builder strings.Builder
-
-	builder.WriteString("\n=== Syntax Error ===\n")
-	builder.WriteString(fmt.Sprintf("Message: %s\n", message))
-	builder.WriteString(fmt.Sprintf("Location: %s\n\n", pos.String()))
-
-	for i := pos.StartLine; i <= pos.EndLine; i++ {
-		// Выделяем строку с ошибкой
-		if i == pos.EndLine {
-			builder.WriteString(fmt.Sprintf("> %4d | %s\n", i, errorLines[i-pos.StartLine]))
-
-			if pos.StartColumn > 0 {
-				underline := strings.Repeat(" ", pos.StartColumn+6) + "^"
-				if pos.EndColumn > pos.StartColumn {
-					underline += strings.Repeat("~", pos.EndColumn-pos.StartColumn)
-				}
-				builder.WriteString(fmt.Sprintf("       | %s\n", underline))
-			}
-		} else {
-			builder.WriteString(fmt.Sprintf("  %4d | %s\n", i, errorLines[i-pos.StartLine]))
-		}
-	}
-
-	return builder.String()
 }

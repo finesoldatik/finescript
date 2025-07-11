@@ -12,7 +12,7 @@ func EvaluateStmt(node ast.Stmt, env Environment) RuntimeVal {
 		return evalBlockStmt(stmt, env)
 	case ast.VarDeclStmt:
 		return env.declareVar(stmt.Name, evaluateExpr(stmt.Value, env), stmt.IsConstant)
-	case ast.FunctionDeclStmt:
+	case ast.FunDeclStmt:
 		return env.declareVar(stmt.Name, FunctionVal{
 			Name:           stmt.Name,
 			Params:         stmt.Params,
@@ -21,8 +21,6 @@ func EvaluateStmt(node ast.Stmt, env Environment) RuntimeVal {
 		}, true)
 	case ast.IfStmt:
 		return evalIfStmt(stmt, env)
-	// case ast.LoopStmt:
-	// 	return evalLoopStmt(stmt, env)
 	case ast.ExprStmt:
 		return evaluateExpr(stmt.Expr, env)
 	default:
@@ -50,14 +48,14 @@ func evaluateExpr(node ast.Expr, env Environment) RuntimeVal {
 		return BoolVal{
 			Value: expr.Value,
 		}
-	case ast.ArrayLiteral:
-		result := make([]RuntimeVal, 0)
-		for _, elem := range expr.Elements {
-			result = append(result, evaluateExpr(elem, env))
-		}
-		return ArrayVal{
-			Elements: result,
-		}
+	// case ast.ArrayLiteral:
+	// 	result := make([]RuntimeVal, 0)
+	// 	for _, elem := range expr.Elements {
+	// 		result = append(result, evaluateExpr(elem, env))
+	// 	}
+	// 	return ArrayVal{
+	// 		Elements: result,
+	// 	}
 	case ast.BinaryExpr:
 		return evalBinaryExpr(expr, env)
 	case ast.UnaryExpr:

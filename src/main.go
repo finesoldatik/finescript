@@ -9,30 +9,82 @@ import (
 	"time"
 
 	"github.com/sanity-io/litter"
+	"github.com/spf13/cobra"
+)
+
+var (
+	showTokens bool
+	showAST    bool
+	showResult bool
+	showTime   bool
+	filePath   string
 )
 
 func main() {
-	sourceBytes, _ := os.ReadFile("../examples/test.fs")
-	source := string(sourceBytes)
+	var rootCmd = &cobra.Command{
+		Use:   "finescript",
+		Short: "A simple programming language.",
+		Long:  "He is fine!",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) > 0 {
+				filePath = args[0]
+			}
 
-	startLexer := time.Now()
-	tokens := lexer.Tokenize(source)
-	durationLexer := time.Since(startLexer)
+			startReadFile := time.Now()
+			sourceBytes, err := os.ReadFile(filePath)
+			if err != nil {
+				fmt.Printf("Error reading file: %v\n", err)
+				os.Exit(1)
+			}
+			source := string(sourceBytes)
+			durationReadFile := time.Since(startReadFile)
 
-	startParser := time.Now()
-	ast := parser.Parse(tokens, source)
-	fmt.Println("\nAST:==================================")
-	litter.Dump(ast)
-	durationParser := time.Since(startParser)
+			startLexer := time.Now()
+			tokens := lexer.Tokenize(source)
+			durationLexer := time.Since(startLexer)
 
-	startInterpreter := time.Now()
-	env := runtime.GlobalEnv()
-	fmt.Println("\nRESULT:===============================")
-	result := runtime.EvaluateStmt(ast, env)
-	print("\n\nFINAL VALUE:==========================\n")
-	println(runtime.Format(result))
-	durationInterpreter := time.Since(startInterpreter)
+			startParser := time.Now()
+			ast := parser.Parse(tokens, source)
+			durationParser := time.Since(startParser)
 
-	fmt.Println("\nTIME:=================================")
-	fmt.Printf("Duration Lexer: %s\nDuration Parser: %s\nDuration Interpreter: %s\n", durationLexer, durationParser, durationInterpreter)
+			startInterpreter := time.Now()
+			env := runtime.GlobalEnv()
+			if showTokens || showAST || showResult || showTime {
+				println("RUNTIME:===============================")
+			}
+			result := runtime.EvaluateStmt(ast, env)
+			println()
+			durationInterpreter := time.Since(startInterpreter)
+
+			if showTokens {
+				println("\nTOKENS:===============================")
+				litter.Dump(tokens)
+			}
+			if showAST {
+				println("\nAST:==================================")
+				litter.Dump(ast)
+			}
+			if showResult {
+				println("\nRESULT:===============================")
+				println(runtime.Format(result))
+			}
+			if showTime {
+				println("\nTIME:=================================")
+				fmt.Printf("Duration Read File: %s\nDuration Lexer: %s\nDuration Parser: %s\nDuration Interpreter: %s\n",
+					durationReadFile, durationLexer, durationParser, durationInterpreter)
+			}
+		},
+	}
+
+	rootCmd.PersistentFlags().BoolVarP(&showTokens, "show-tokens", "t", false, "Enables program tokens visibility")
+	rootCmd.PersistentFlags().BoolVarP(&showAST, "show-ast", "a", false, "Enables program AST visibility")
+	rootCmd.PersistentFlags().BoolVarP(&showResult, "show-result", "r", false, "Enables program result visibility")
+	rootCmd.PersistentFlags().BoolVarP(&showTime, "show-time", "s", false, "Enables program execute time visibility")
+
+	rootCmd.Args = cobra.ExactArgs(1)
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

@@ -131,28 +131,28 @@ func Format(val RuntimeVal) string {
 		}
 	case NullVal:
 		return "null"
-	case ArrayVal:
-		result := "["
-		for i, elem := range valType.Elements {
-			result += Format(elem)
-			if i+1 < len(valType.Elements) {
-				result += ", "
-			}
-		}
-		result += "]"
-		return result
-	case ObjectVal:
-		result := "{"
-		i := 0
-		for name, elem := range valType.Elements {
-			i++
-			result += name + ": " + Format(elem)
-			if i+1 < len(valType.Elements) {
-				result += ", "
-			}
-		}
-		result += "}"
-		return result
+	// case ArrayVal:
+	// 	result := "["
+	// 	for i, elem := range valType.Elements {
+	// 		result += Format(elem)
+	// 		if i+1 < len(valType.Elements) {
+	// 			result += ", "
+	// 		}
+	// 	}
+	// 	result += "]"
+	// 	return result
+	// case ObjectVal:
+	// 	result := "{"
+	// 	i := 0
+	// 	for name, elem := range valType.Elements {
+	// 		i++
+	// 		result += name + ": " + Format(elem)
+	// 		if i+1 < len(valType.Elements) {
+	// 			result += ", "
+	// 		}
+	// 	}
+	// 	result += "}"
+	// 	return result
 	case FunctionVal:
 		result := valType.Name + "("
 		for _, param := range valType.Params {

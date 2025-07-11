@@ -1,14 +1,13 @@
 package lexer
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type TokenKind int
 
 const (
 	EOF TokenKind = iota
 	NULL
+	UNDEFINED
 	TRUE
 	FALSE
 	INT
@@ -16,7 +15,7 @@ const (
 	STRING
 	IDENTIFIER
 
-	// Grouping & Braces
+	// Скобки
 	OPEN_BRACKET
 	CLOSE_BRACKET
 	OPEN_CURLY
@@ -24,23 +23,23 @@ const (
 	OPEN_PAREN
 	CLOSE_PAREN
 
-	// Equivilance
+	// Равенство
 	ASSIGNMENT
 	EQUALS
 	NOT_EQUALS
 	NOT
 
-	// Conditional
+	// Измерение
 	LESS
 	LESS_EQUALS
 	GREATER
 	GREATER_EQUALS
 
-	// Logical
+	// Логическое
 	OR
 	AND
 
-	// Symbols
+	// Символы
 	DOT
 	DOT_DOT
 	SEMI_COLON
@@ -48,10 +47,9 @@ const (
 	QUESTION
 	COMMA
 
-	// Shorthand
+	// Краткая запись
 	PLUS_PLUS
 	MINUS_MINUS
-	STAR_STAR
 
 	PLUS_EQUALS
 	MINUS_EQUALS
@@ -59,65 +57,81 @@ const (
 	SLASH_EQUALS
 	PERCENT_EQUALS
 
-	// Maths
+	// Математика
 	PLUS
 	MINUS
 	SLASH
 	STAR
 	PERCENT
 
-	// Reserved Keywords
+	// Ключевые слова
 	LET
 	VAR
 	CONST
-	IMPORT
-	FROM
+
+	TYPE
+	STRUCT
+
 	FUN
-	LOOP
-	BREAK
-	CONTINUE
 	IF
 	ELSE
-	EXPORT
+
+	YAY
+	OOPS
+
+	INT_TYPE
+	FLOAT_TYPE
+	STRING_TYPE
+	BOOL_TYPE
+	OBJECT_TYPE
+	ARRAY_TYPE
+	ANY_TYPE
+	VOID_TYPE
 )
 
-var reserved_lu map[string]TokenKind = map[string]TokenKind{
-	"true":     TRUE,
-	"false":    FALSE,
-	"null":     NULL,
-	"let":      LET,
-	"var":      VAR,
-	"const":    CONST,
-	"import":   IMPORT,
-	"from":     FROM,
-	"fun":      FUN,
-	"loop":     LOOP,
-	"break":    BREAK,
-	"continue": CONTINUE,
-	"if":       IF,
-	"else":     ELSE,
-	"export":   EXPORT,
+var keywords = map[string]TokenKind{
+	"true":      TRUE,
+	"false":     FALSE,
+	"null":      NULL,
+	"undefined": UNDEFINED,
+
+	"let":   LET,
+	"var":   VAR,
+	"const": CONST,
+
+	"type":   TYPE,
+	"struct": STRUCT,
+
+	"fun":  FUN,
+	"if":   IF,
+	"else": ELSE,
+
+	"yay":  YAY,
+	"oops": OOPS,
+
+	"int":    INT_TYPE,
+	"float":  FLOAT_TYPE,
+	"string": STRING_TYPE,
+	"bool":   BOOL_TYPE,
+	"object": OBJECT_TYPE,
+	"array": ARRAY_TYPE,
+	"any": ANY_TYPE,
+	"void": VOID_TYPE,
 }
 
 type Position struct {
-	StartLine   int
-	EndLine     int
-	StartColumn int
-	EndColumn   int
-	Index       int
+	StartPos int
+	EndPos   int
 }
 
-func (p Position) String() string {
-	if p.StartLine == p.EndLine {
-		return fmt.Sprintf("line %d, cols %d-%d", p.StartLine, p.StartColumn, p.EndColumn)
-	}
-	return fmt.Sprintf("line %d, col %d - line %d, col %d", p.StartLine, p.StartColumn, p.EndLine, p.EndColumn)
+func (pos Position) ToString() string {
+	return fmt.Sprintf("%d:%d", pos.StartPos, pos.EndPos)
 }
 
 type Token struct {
-	Kind  TokenKind
-	Value string
-	Pos   *Position
+	Kind     TokenKind
+	Value    string
+	Position Position
 }
 
 func (tk Token) IsOneOfMany(expectedTokens ...TokenKind) bool {
@@ -131,11 +145,7 @@ func (tk Token) IsOneOfMany(expectedTokens ...TokenKind) bool {
 }
 
 func (token Token) Debug() {
-	if token.Kind == IDENTIFIER || token.Kind == INT || token.Kind == FLOAT || token.Kind == STRING {
-		fmt.Printf("%s(%s)\n", TokenKindString(token.Kind), token.Value)
-	} else {
-		fmt.Printf("%s()\n", TokenKindString(token.Kind))
-	}
+	fmt.Printf("%s()\n", TokenKindString(token.Kind))
 }
 
 func TokenKindString(kind TokenKind) string {
@@ -221,36 +231,20 @@ func TokenKindString(kind TokenKind) string {
 	case LET:
 		return "let"
 	case VAR:
-		return "VAR"
+		return "var"
 	case CONST:
 		return "const"
-	case IMPORT:
-		return "import"
-	case FROM:
-		return "from"
 	case FUN:
 		return "fun"
-	case LOOP:
-		return "loop"
-	case BREAK:
-		return "break"
-	case CONTINUE:
-		return "continue"
 	case IF:
 		return "if"
 	case ELSE:
 		return "else"
-	case EXPORT:
-		return "export"
+	case YAY:
+		return "yay"
+	case OOPS:
+		return "oops"
 	default:
 		return fmt.Sprintf("unknown(%d)", kind)
-	}
-}
-
-func newToken(kind TokenKind, value string, pos *Position) Token {
-	return Token{
-		Kind:  kind,
-		Value: value,
-		Pos:   pos,
 	}
 }
