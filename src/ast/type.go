@@ -193,7 +193,7 @@ func (t IntersectionType) Pos() lexer.Position {
 }
 
 type FunType struct {
-	Params   map[string]Type
+	Params   []Param
 	Type     Type
 	Position lexer.Position
 }
@@ -216,7 +216,7 @@ func (t PropertySignature) member() {}
 
 type MethodSignature struct {
 	Name   string
-	Params map[string]Type
+	Params []Param
 	Type   Type
 }
 

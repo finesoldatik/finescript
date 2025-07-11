@@ -15,43 +15,43 @@ func handleArgs(argsCount int, paramCount int) {
 	}
 }
 
-func nativeSprintf(args []RuntimeVal, env Environment) RuntimeVal {
+func Sprintf(args []RuntimeVal, env Environment) RuntimeVal {
 	return StringVal{
 		Value: sprint_format(args),
 	}
 }
 
-func nativePrint(args []RuntimeVal, env Environment) RuntimeVal {
+func Print(args []RuntimeVal, env Environment) RuntimeVal {
 	print(sprint_format(args))
 	return NullVal{}
 }
 
-func nativePrintln(args []RuntimeVal, env Environment) RuntimeVal {
+func Println(args []RuntimeVal, env Environment) RuntimeVal {
 	println(sprint_format(args))
 	return NullVal{}
 }
 
-func nativeInt(args []RuntimeVal, env Environment) RuntimeVal {
+func Int(args []RuntimeVal, env Environment) RuntimeVal {
 	handleArgs(len(args), 1)
 	return ToInt(args[0])
 }
 
-func nativeFloat(args []RuntimeVal, env Environment) RuntimeVal {
+func Float(args []RuntimeVal, env Environment) RuntimeVal {
 	handleArgs(len(args), 1)
 	return ToFloat(args[0])
 }
 
-func nativeString(args []RuntimeVal, env Environment) RuntimeVal {
+func String(args []RuntimeVal, env Environment) RuntimeVal {
 	handleArgs(len(args), 1)
 	return ToString(args[0])
 }
 
-func nativeBool(args []RuntimeVal, env Environment) RuntimeVal {
+func Bool(args []RuntimeVal, env Environment) RuntimeVal {
 	handleArgs(len(args), 1)
 	return ToBool(args[0])
 }
 
-func nativeInput(args []RuntimeVal, env Environment) RuntimeVal {
+func Input(args []RuntimeVal, env Environment) RuntimeVal {
 	if len(args) == 0 {
 		args = []RuntimeVal{
 			StringVal{

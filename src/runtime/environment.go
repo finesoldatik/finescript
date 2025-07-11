@@ -12,42 +12,42 @@ func GlobalEnv() Environment {
 
 	env.declareVar("print", NativeFnVal{
 		Name: "print",
-		Call: nativePrint,
+		Call: Print,
 	}, true)
 
 	env.declareVar("println", NativeFnVal{
 		Name: "println",
-		Call: nativePrintln,
+		Call: Println,
 	}, true)
 
 	env.declareVar("sprintf", NativeFnVal{
 		Name: "sprintf",
-		Call: nativeSprintf,
+		Call: Sprintf,
 	}, true)
 
 	env.declareVar("int", NativeFnVal{
 		Name: "int",
-		Call: nativeInt,
+		Call: Int,
 	}, true)
 
 	env.declareVar("float", NativeFnVal{
 		Name: "float",
-		Call: nativeFloat,
+		Call: Float,
 	}, true)
 
 	env.declareVar("string", NativeFnVal{
 		Name: "string",
-		Call: nativeString,
+		Call: String,
 	}, true)
 
 	env.declareVar("bool", NativeFnVal{
 		Name: "bool",
-		Call: nativeBool,
+		Call: Bool,
 	}, true)
 
 	env.declareVar("input", NativeFnVal{
 		Name: "input",
-		Call: nativeInput,
+		Call: Input,
 	}, true)
 
 	// env.declareVar("len", NativeFnVal{
@@ -68,7 +68,7 @@ type Environment struct {
 	variables map[string]variable
 }
 
-func (env Environment) declareVar(varname string, value RuntimeVal, isConstant bool) RuntimeVal {
+func (env *Environment) declareVar(varname string, value RuntimeVal, isConstant bool) RuntimeVal {
 	if _, exists := env.variables[varname]; exists {
 		panic("Variable exists")
 	}
@@ -81,7 +81,7 @@ func (env Environment) declareVar(varname string, value RuntimeVal, isConstant b
 	return value
 }
 
-func (env Environment) assignVar(varname string, value RuntimeVal) RuntimeVal {
+func (env *Environment) assignVar(varname string, value RuntimeVal) RuntimeVal {
 	newEnv := env.resolve(varname)
 
 	if newEnv.variables[varname].IsConstant {
@@ -92,15 +92,16 @@ func (env Environment) assignVar(varname string, value RuntimeVal) RuntimeVal {
 		IsConstant: false,
 		Value:      value,
 	}
+
 	return value
 }
 
-func (env Environment) lookupVar(varname string) variable {
+func (env *Environment) lookupVar(varname string) variable {
 	newEnv := env.resolve(varname)
 	return newEnv.variables[varname]
 }
 
-func (env Environment) resolve(varname string) Environment {
+func (env *Environment) resolve(varname string) *Environment {
 	if _, exists := env.variables[varname]; exists {
 		return env
 	}

@@ -226,10 +226,45 @@ func evalCallExpr(expr ast.CallExpr, env Environment) RuntimeVal {
 }
 
 func evalAssignExpr(expr ast.AssignExpr, env Environment) RuntimeVal {
-	switch left := expr.Assigne.(type) {
+	switch assigne := expr.Assigne.(type) {
 	case ast.Identifier:
-		right := evaluateExpr(expr.Expr, env)
-		return env.assignVar(left.Name, right)
+		switch expr.Op.Kind {
+		case lexer.EQUALS:
+			return env.assignVar(assigne.Name, evaluateExpr(expr.Expr, env))
+		case lexer.PLUS_EQUALS:
+			switch var_ := env.lookupVar(assigne.Name).Value.(type) {
+			case IntVal:
+				return env.assignVar(assigne.Name, IntVal{
+					Value: var_.Value + ToInt(evaluateExpr(expr.Expr, env)).Value,
+				})
+			case FloatVal:
+				return env.assignVar(assigne.Name, FloatVal{
+					Value: var_.Value + ToFloat(evaluateExpr(expr.Expr, env)).Value,
+				})
+			case StringVal:
+				return env.assignVar(assigne.Name, StringVal{
+					Value: var_.Value + ToString(evaluateExpr(expr.Expr, env)).Value,
+				})
+			default:
+				panic("Cannot use PLUS_EQUALS to this assigne")
+			}
+		case lexer.MINUS_EQUALS:
+			switch var_ := env.lookupVar(assigne.Name).Value.(type) {
+			case IntVal:
+				return env.assignVar(assigne.Name, IntVal{
+					Value: var_.Value - ToInt(evaluateExpr(expr.Expr, env)).Value,
+				})
+			case FloatVal:
+				return env.assignVar(assigne.Name, FloatVal{
+					Value: var_.Value - ToFloat(evaluateExpr(expr.Expr, env)).Value,
+				})
+			default:
+				panic("Cannot use MINUS_EQUALS to this assigne")
+			}
+		default:
+			panic("Unknown Op kind")
+		}
+
 	default:
 		panic("Invalid left hand side expr inside assignment expr")
 	}

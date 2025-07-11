@@ -114,9 +114,9 @@ var keywords = map[string]TokenKind{
 	"string": STRING_TYPE,
 	"bool":   BOOL_TYPE,
 	"object": OBJECT_TYPE,
-	"array": ARRAY_TYPE,
-	"any": ANY_TYPE,
-	"void": VOID_TYPE,
+	"array":  ARRAY_TYPE,
+	"any":    ANY_TYPE,
+	"void":   VOID_TYPE,
 }
 
 type Position struct {
@@ -244,6 +244,22 @@ func TokenKindString(kind TokenKind) string {
 		return "yay"
 	case OOPS:
 		return "oops"
+	case INT_TYPE:
+		return "int_type"
+	case FLOAT_TYPE:
+		return "float_type"
+	case STRING_TYPE:
+		return "string_type"
+	case BOOL_TYPE:
+		return "bool_type"
+	case OBJECT_TYPE:
+		return "object_type"
+	case ARRAY_TYPE:
+		return "array_type"
+	case ANY_TYPE:
+		return "any_type"
+	case VOID_TYPE:
+		return "void_type"
 	default:
 		return fmt.Sprintf("unknown(%d)", kind)
 	}

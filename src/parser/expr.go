@@ -114,11 +114,12 @@ func parseLedUnaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 }
 
 func parseAssignExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
-	p.advance()
+	op := p.advance()
 	expr := parseExpr(p, bp)
 
 	return ast.AssignExpr{
 		Assigne: left,
+		Op:      op,
 		Expr:    expr,
 		Position: lexer.Position{
 			StartPos: left.Pos().StartPos,
@@ -158,12 +159,11 @@ func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	startPos := p.advance().Position.StartPos
 	arguments := make([]ast.Expr, 0)
 
-	for !p.currentToken().IsOneOfMany(lexer.CLOSE_PAREN, lexer.EOF) {
+	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
 		arguments = append(arguments, parseExpr(p, assignment))
-		if p.currentTokenKind() == lexer.COMMA {
-			p.advance()
-		} else {
-			panic(fmt.Sprintf("Expected ',' between arguments in function call at %s", p.currentToken().Position.ToString()))
+
+		if p.currentTokenKind() != lexer.CLOSE_PAREN {
+			p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between parameters in function declaration at %s", p.currentToken().Position.ToString()))
 		}
 	}
 

@@ -83,13 +83,11 @@ func parseVarDecl(p *parser) ast.Stmt {
 func parseFunDecl(p *parser) ast.Stmt {
 	startPos := p.advance().Position.StartPos
 	name := p.expect(lexer.IDENTIFIER).Value
-	params := make([]ast.Param, 0)
 
 	p.expect(lexer.OPEN_PAREN)
-
-	parseParams(p, params)
-
+	params := parseParams(p)
 	p.expect(lexer.CLOSE_PAREN)
+
 	var body []ast.Stmt
 
 	var endPos int

@@ -23,7 +23,7 @@ func type_led(kind lexer.TokenKind, bp binding_power, led_fn type_led_handler) {
 }
 
 func type_nud(kind lexer.TokenKind, bp binding_power, nud_fn type_nud_handler) {
-	type_bp_lu[kind] = primary
+	type_bp_lu[kind] = bp
 	type_nud_lu[kind] = nud_fn
 }
 
@@ -55,7 +55,7 @@ func parse_type(p *parser, bp binding_power) ast.Type {
 	nud_fn, exists := type_nud_lu[tokenKind]
 
 	if !exists {
-		panic(fmt.Sprintf("type: NUD Handler expected for token %s\n", lexer.TokenKindString(tokenKind)))
+		panic(fmt.Sprintf("TYPE_NUD Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
 	}
 
 	left := nud_fn(p)
@@ -65,7 +65,7 @@ func parse_type(p *parser, bp binding_power) ast.Type {
 		led_fn, exists := type_led_lu[tokenKind]
 
 		if !exists {
-			panic(fmt.Sprintf("type: LED Handler expected for token %s\n", lexer.TokenKindString(tokenKind)))
+			panic(fmt.Sprintf("TYPE_LED Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
 		}
 
 		left = led_fn(p, left, bp)
@@ -75,36 +75,108 @@ func parse_type(p *parser, bp binding_power) ast.Type {
 }
 
 func parseTypeDecl(p *parser) ast.Type {
-	return ast.TypeAliasDecl{}
+	startPos := p.advance().Position.StartPos
+	alias := p.expect(lexer.IDENTIFIER).Value
+
+	p.expect(lexer.EQUALS)
+
+	aliasType := parse_type(p, defalt_bp)
+
+	return ast.TypeAliasDecl{
+		Name: alias,
+		Type: aliasType,
+		Position: lexer.Position{
+			StartPos: startPos,
+			EndPos:   aliasType.Pos().EndPos,
+		},
+	}
 }
 
 func parseStructType(p *parser) ast.Type {
-	return ast.StructType{}
+	startPos := p.advance().Position.StartPos
+	members := make([]ast.Member, 0)
+	properties := make([]ast.PropertySignature, 0)
+	methods := make([]ast.MethodSignature, 0)
+
+	for !p.currentToken().IsOneOfMany(lexer.CLOSE_CURLY, lexer.EOF) {
+		name := p.expect(lexer.IDENTIFIER).Value
+		if p.currentTokenKind() == lexer.COLON {
+			p.advance()
+			properties = append(properties, ast.PropertySignature{
+				Name: name,
+				Type: parse_type(p, defalt_bp),
+			})
+		} else {
+			p.expect(lexer.OPEN_PAREN)
+			params := parseParams(p)
+			p.expect(lexer.CLOSE_PAREN)
+			var methodType ast.Type = ast.VoidKeyword{}
+			if p.currentTokenKind() == lexer.COLON {
+				p.advance()
+				methodType = parse_type(p, defalt_bp)
+			}
+
+			methods = append(methods, ast.MethodSignature{
+				Name:   name,
+				Params: params,
+				Type:   methodType,
+			})
+		}
+
+		p.expect(lexer.COMMA)
+	}
+
+	for _, p := range properties {
+		members = append(members, p)
+	}
+	for _, m := range methods {
+		members = append(members, m)
+	}
+
+	return ast.StructType{
+		Members: members,
+		Position: lexer.Position{
+			StartPos: startPos,
+			EndPos:   p.expect(lexer.CLOSE_CURLY).Position.EndPos,
+		},
+	}
 }
 
 func parsePrimaryType(p *parser) ast.Type {
+
 	switch p.currentTokenKind() {
 	case lexer.NULL:
+		p.advance()
 		return ast.NullKeyword{}
 	case lexer.UNDEFINED:
+		p.advance()
 		return ast.UndefinedKeyword{}
 	case lexer.FUN:
+		p.advance()
 		return ast.FunKeyword{}
 	case lexer.INT_TYPE:
+		p.advance()
 		return ast.IntKeyword{}
 	case lexer.FLOAT_TYPE:
+		p.advance()
 		return ast.FloatKeyword{}
 	case lexer.STRING_TYPE:
+		p.advance()
 		return ast.StringKeyword{}
 	case lexer.BOOL_TYPE:
+		p.advance()
 		return ast.BoolKeyword{}
 	case lexer.OBJECT_TYPE:
+		p.advance()
 		return ast.ObjectKeyword{}
 	case lexer.ARRAY_TYPE:
+		p.advance()
 		return ast.ArrayKeyword{}
 	case lexer.ANY_TYPE:
+		p.advance()
 		return ast.AnyKeyword{}
 	case lexer.VOID_TYPE:
+		p.advance()
 		return ast.VoidKeyword{}
 	default:
 		panic(fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(p.currentTokenKind()), p.currentToken().Position.ToString()))

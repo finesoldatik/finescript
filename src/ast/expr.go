@@ -97,6 +97,7 @@ func (e BinaryExpr) Pos() lexer.Position {
 
 type AssignExpr struct {
 	Assigne  Expr
+	Op       lexer.Token
 	Expr     Expr
 	Position lexer.Position
 }
@@ -118,10 +119,10 @@ func (e CallExpr) Pos() lexer.Position {
 }
 
 type ConditionalExpr struct {
-	Condition   Expr
-	Consequent  Expr
-	Alternate   Expr
-	Position    lexer.Position
+	Condition  Expr
+	Consequent Expr
+	Alternate  Expr
+	Position   lexer.Position
 }
 
 func (e ConditionalExpr) expr() {}
