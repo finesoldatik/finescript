@@ -36,7 +36,7 @@ func createTypeTokenLookups() {
 		}
 	})
 	type_nud(lexer.TYPE, primary, parseTypeDecl)
-	type_nud(lexer.STRUCT, primary, parseStructDecl)
+	type_nud(lexer.STRUCT, primary, parseStructType)
 	type_nud(lexer.NULL, primary, parsePrimaryType)
 	type_nud(lexer.UNDEFINED, primary, parsePrimaryType)
 	type_nud(lexer.FUN, primary, parsePrimaryType)
@@ -72,6 +72,14 @@ func parse_type(p *parser, bp binding_power) ast.Type {
 	}
 
 	return left
+}
+
+func parseTypeDecl(p *parser) ast.Type {
+	return ast.TypeAliasDecl{}
+}
+
+func parseStructType(p *parser) ast.Type {
+	return ast.StructType{}
 }
 
 func parsePrimaryType(p *parser) ast.Type {

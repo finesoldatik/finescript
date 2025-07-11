@@ -41,7 +41,7 @@ func parseBlockStmt(p *parser) ast.Stmt {
 	}
 }
 
-func parseVarDeclStmt(p *parser) ast.Stmt {
+func parseVarDecl(p *parser) ast.Stmt {
 	startToken := p.advance()
 	isConstant := startToken.Kind == lexer.CONST
 	identName := p.expectError(lexer.IDENTIFIER,
@@ -80,31 +80,14 @@ func parseVarDeclStmt(p *parser) ast.Stmt {
 	}
 }
 
-func parseFunDeclaration(p *parser) ast.Stmt {
+func parseFunDecl(p *parser) ast.Stmt {
 	startPos := p.advance().Position.StartPos
 	name := p.expect(lexer.IDENTIFIER).Value
-	params := make([]string, 0)
+	params := make([]ast.Param, 0)
 
 	p.expect(lexer.OPEN_PAREN)
-	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
-		paramName := p.expect(lexer.IDENTIFIER).Value
 
-		params = append(params, paramName)
-
-		if !p.currentToken().IsOneOfMany(lexer.CLOSE_PAREN, lexer.EOF) {
-			if p.currentTokenKind() == lexer.COMMA {
-				p.advance()
-			} else {
-				p.expect(lexer.SEMI_COLON)
-			}
-		}
-	}
-
-	if p.currentTokenKind() == lexer.COMMA {
-		p.advance()
-	} else if p.currentTokenKind() == lexer.SEMI_COLON {
-		p.advance()
-	}
+	parseParams(p, params)
 
 	p.expect(lexer.CLOSE_PAREN)
 	var body []ast.Stmt

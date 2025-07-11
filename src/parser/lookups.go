@@ -101,9 +101,9 @@ func createTokenLookups() {
 
 	// Stmt
 	stmt(lexer.OPEN_CURLY, parseBlockStmt)
-	stmt(lexer.LET, parseVarDeclStmt)
-	stmt(lexer.VAR, parseVarDeclStmt)
-	stmt(lexer.CONST, parseVarDeclStmt)
-	stmt(lexer.FUN, parseFunDeclaration)
+	stmt(lexer.LET, parseVarDecl)
+	stmt(lexer.VAR, parseVarDecl)
+	stmt(lexer.CONST, parseVarDecl)
+	stmt(lexer.FUN, parseFunDecl)
 	stmt(lexer.IF, parseIfStmt)
 }

@@ -156,7 +156,7 @@ func Format(val RuntimeVal) string {
 	case FunctionVal:
 		result := valType.Name + "("
 		for _, param := range valType.Params {
-			result += param + ", "
+			result += fmt.Sprintf("%s: %s, ", param.Name, param.Type)
 		}
 		result += ")"
 		return result

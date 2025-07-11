@@ -158,22 +158,13 @@ func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	startPos := p.advance().Position.StartPos
 	arguments := make([]ast.Expr, 0)
 
-	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
+	for !p.currentToken().IsOneOfMany(lexer.CLOSE_PAREN, lexer.EOF) {
 		arguments = append(arguments, parseExpr(p, assignment))
-
-		if !p.currentToken().IsOneOfMany(lexer.EOF, lexer.CLOSE_PAREN) {
-			if p.currentTokenKind() == lexer.COMMA {
-				p.advance()
-			} else {
-				p.expect(lexer.SEMI_COLON)
-			}
+		if p.currentTokenKind() == lexer.COMMA {
+			p.advance()
+		} else {
+			panic(fmt.Sprintf("Expected ',' between arguments in function call at %s", p.currentToken().Position.ToString()))
 		}
-	}
-
-	if p.currentTokenKind() == lexer.COMMA {
-		p.advance()
-	} else if p.currentTokenKind() == lexer.SEMI_COLON {
-		p.advance()
 	}
 
 	return ast.CallExpr{

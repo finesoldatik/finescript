@@ -116,3 +116,15 @@ func (e CallExpr) expr() {}
 func (e CallExpr) Pos() lexer.Position {
 	return e.Position
 }
+
+type ConditionalExpr struct {
+	Condition   Expr
+	Consequent  Expr
+	Alternate   Expr
+	Position    lexer.Position
+}
+
+func (e ConditionalExpr) expr() {}
+func (e ConditionalExpr) Pos() lexer.Position {
+	return e.Position
+}

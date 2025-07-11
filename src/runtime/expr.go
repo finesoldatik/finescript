@@ -211,7 +211,7 @@ func evalCallExpr(expr ast.CallExpr, env Environment) RuntimeVal {
 			} else if len(callerType.Params) < len(args) {
 				panic("Arg num more then Param num")
 			}
-			scope.declareVar(param, args[i], false)
+			scope.declareVar(param.Name, args[i], false)
 		}
 
 		var result RuntimeVal = NullVal{}

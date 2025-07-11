@@ -48,7 +48,7 @@ func (r NullVal) runtime_val() {}
 
 type FunctionVal struct {
 	Name           string
-	Params         []string
+	Params         []ast.Param
 	Body           []ast.Stmt
 	DeclarationEnv Environment
 }

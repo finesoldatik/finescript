@@ -44,9 +44,14 @@ func (s VarDeclStmt) Pos() lexer.Position {
 	return s.Position
 }
 
+type Param struct {
+	Name string
+	Type Type
+}
+
 type FunDeclStmt struct {
 	Name     string
-	Params   []string
+	Params   []Param
 	Body     []Stmt
 	Position lexer.Position
 }
