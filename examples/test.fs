@@ -1,4 +1,6 @@
+type d = int
+
 type a = struct {
   b: int,
-  c(a: a): void
+  c(a: d): void
 }

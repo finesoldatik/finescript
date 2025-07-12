@@ -183,7 +183,7 @@ func (t IntersectionType) Pos() lexer.Position {
 
 type FunType struct {
 	Params   []Param
-	Type     Type
+	ReturnType     Type
 	Position lexer.Position
 }
 

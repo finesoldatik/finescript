@@ -50,10 +50,11 @@ type Param struct {
 }
 
 type FunDeclStmt struct {
-	Name     string
-	Params   []Param
-	Body     []Stmt
-	Position lexer.Position
+	Name       string
+	Params     []Param
+	Body       []Stmt
+	ReturnType Type
+	Position   lexer.Position
 }
 
 func (s FunDeclStmt) stmt() {}

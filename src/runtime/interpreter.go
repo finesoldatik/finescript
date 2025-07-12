@@ -20,9 +20,10 @@ func EvaluateStmt(node ast.Stmt, env Environment) RuntimeVal {
 			DeclarationEnv: env,
 		}, true)
 	case ast.TypeAliasDecl:
+		resolveType(stmt.Type, env)
 		return env.declareVar(stmt.Name, TypeAliasVal{
 			Name: stmt.Name,
-			Type: stmt.Type,
+			Type: resolveType(stmt.Type, env),
 		}, true)
 	case ast.IfStmt:
 		return evalIfStmt(stmt, env)

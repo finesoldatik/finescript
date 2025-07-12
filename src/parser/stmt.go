@@ -88,6 +88,12 @@ func parseFunDecl(p *parser) ast.Stmt {
 	params := parseParams(p)
 	p.expect(lexer.CLOSE_PAREN)
 
+	var returnType ast.Type = ast.VoidKeyword{}
+	if p.currentTokenKind() == lexer.COLON {
+		p.advance()
+		returnType = parse_type(p, defalt_bp)
+	}
+
 	var body []ast.Stmt
 
 	var endPos int
@@ -102,9 +108,10 @@ func parseFunDecl(p *parser) ast.Stmt {
 	}
 
 	return ast.FunDeclStmt{
-		Params: params,
-		Body:   body,
-		Name:   name,
+		Name:       name,
+		Params:     params,
+		Body:       body,
+		ReturnType: returnType,
 		Position: lexer.Position{
 			StartPos: startPos,
 			EndPos:   endPos,
