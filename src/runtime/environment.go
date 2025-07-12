@@ -60,6 +60,11 @@ func GlobalEnv() Environment {
 	// 	Call: nativeLen,
 	// }, true)
 
+	env.declareVar("exit", NativeFnVal{
+		Name: "exit",
+		Call: Exit,
+	}, true)
+
 	return env
 }
 

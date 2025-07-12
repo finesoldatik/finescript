@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"finescript/src/lexer"
 	"finescript/src/parser"
 	"finescript/src/runtime"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sanity-io/litter"
@@ -13,74 +15,93 @@ import (
 )
 
 var (
-	showTokens bool
-	showAST    bool
-	showResult bool
-	showTime   bool
-	filePath   string
+	showTokens,
+	showAST,
+	showResult,
+	showTime bool
 )
 
-func main() {
-	var rootCmd = &cobra.Command{
-		Use:   "finescript",
-		Short: "A simple programming language.",
-		Long:  "He is fine!",
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) > 0 {
-				filePath = args[0]
-			}
+var rootCmd = &cobra.Command{
+	Use:   "finescript",
+	Short: "A simple programming language.",
+	Long:  "He is fine!",
+	Run: func(cmd *cobra.Command, args []string) {
+		reader := bufio.NewReader(os.Stdin)
+		env := runtime.GlobalEnv()
 
-			startReadFile := time.Now()
-			sourceBytes, err := os.ReadFile(filePath)
+		for {
+			print("> ")
+			text, err := reader.ReadString('\n')
 			if err != nil {
-				fmt.Printf("Error reading file: %v\n", err)
-				os.Exit(1)
+				panic(err)
 			}
-			source := string(sourceBytes)
-			durationReadFile := time.Since(startReadFile)
 
-			startLexer := time.Now()
+			source := strings.TrimSpace(text)
 			tokens := lexer.Tokenize(source)
-			durationLexer := time.Since(startLexer)
-
-			startParser := time.Now()
 			ast := parser.Parse(tokens, source)
-			durationParser := time.Since(startParser)
+			result := runtime.EvaluateStmt(ast, env)
+			println(fmt.Sprintf("\n%s", runtime.Format(result)))
+		}
+	},
+}
 
-			startInterpreter := time.Now()
-			if showTokens || showAST || showResult || showTime {
-				println("RUNTIME:===============================")
-			}
-			result := runtime.EvaluateStmt(ast, runtime.GlobalEnv())
-			println()
-			durationInterpreter := time.Since(startInterpreter)
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run program from file.",
+	Long:  "Specify the path to your software file and enjoy!",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		startReadFile := time.Now()
+		sourceBytes, err := os.ReadFile(args[0])
+		if err != nil {
+			fmt.Printf("Error reading file: %v\n", err)
+			os.Exit(1)
+		}
+		source := string(sourceBytes)
+		durationReadFile := time.Since(startReadFile)
 
-			if showTokens {
-				println("\nTOKENS:===============================")
-				litter.Dump(tokens)
-			}
-			if showAST {
-				println("\nAST:==================================")
-				litter.Dump(ast)
-			}
-			if showResult {
-				println("\nRESULT:===============================")
-				println(runtime.Format(result))
-			}
-			if showTime {
-				println("\nTIME:=================================")
-				fmt.Printf("Duration Read File: %s\nDuration Lexer: %s\nDuration Parser: %s\nDuration Interpreter: %s\n",
-					durationReadFile, durationLexer, durationParser, durationInterpreter)
-			}
-		},
-	}
+		startLexer := time.Now()
+		tokens := lexer.Tokenize(source)
+		durationLexer := time.Since(startLexer)
 
-	rootCmd.PersistentFlags().BoolVarP(&showTokens, "show-tokens", "t", false, "Enables program tokens visibility")
-	rootCmd.PersistentFlags().BoolVarP(&showAST, "show-ast", "a", false, "Enables program AST visibility")
-	rootCmd.PersistentFlags().BoolVarP(&showResult, "show-result", "r", false, "Enables program result visibility")
-	rootCmd.PersistentFlags().BoolVarP(&showTime, "show-time", "s", false, "Enables program execute time visibility")
+		startParser := time.Now()
+		ast := parser.Parse(tokens, source)
+		durationParser := time.Since(startParser)
 
-	rootCmd.Args = cobra.ExactArgs(1)
+		startInterpreter := time.Now()
+		if showTokens || showAST || showResult || showTime {
+			println("RUNTIME:===============================")
+		}
+		result := runtime.EvaluateStmt(ast, runtime.GlobalEnv())
+		println()
+		durationInterpreter := time.Since(startInterpreter)
+
+		if showTokens {
+			println("\nTOKENS:===============================")
+			litter.Dump(tokens)
+		}
+		if showAST {
+			println("\nAST:==================================")
+			litter.Dump(ast)
+		}
+		if showResult {
+			println("\nRESULT:===============================")
+			println(runtime.Format(result))
+		}
+		if showTime {
+			println("\nTIME:=================================")
+			fmt.Printf("Duration Read File: %s\nDuration Lexer: %s\nDuration Parser: %s\nDuration Interpreter: %s\n",
+				durationReadFile, durationLexer, durationParser, durationInterpreter)
+		}
+	},
+}
+
+func main() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.PersistentFlags().BoolVarP(&showTokens, "show-tokens", "t", false, "Enables program tokens visibility")
+	runCmd.PersistentFlags().BoolVarP(&showAST, "show-ast", "a", false, "Enables program AST visibility")
+	runCmd.PersistentFlags().BoolVarP(&showResult, "show-result", "r", false, "Enables program result visibility")
+	runCmd.PersistentFlags().BoolVarP(&showTime, "show-time", "s", false, "Enables program execute time visibility")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

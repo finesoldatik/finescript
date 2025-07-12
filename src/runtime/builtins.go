@@ -91,3 +91,8 @@ func Eval(args []RuntimeVal, env Environment) RuntimeVal {
 // 		Value: int64(len(args[0].(ArrayVal).Elements)),
 // 	}
 // }
+
+func Exit(args []RuntimeVal, env Environment) RuntimeVal {
+	os.Exit(0)
+	return NullVal{}
+}
