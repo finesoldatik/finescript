@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"finescript/src/ast"
-	"finescript/src/lexer"
 )
 
 func resolveType(typ ast.Type, env Environment) ast.Type {
@@ -89,36 +88,5 @@ func resolveType(typ ast.Type, env Environment) ast.Type {
 
 	default:
 		panic("resolveType: Unknown type variant")
-	}
-}
-
-func InferType(val RuntimeVal) ast.Type {
-	switch val.(type) {
-	case IntVal:
-		return ast.IntKeyword{
-			Position: lexer.Position{},
-		}
-	case FloatVal:
-		return ast.FloatKeyword{
-			Position: lexer.Position{},
-		}
-	case StringVal:
-		return ast.StringKeyword{
-			Position: lexer.Position{},
-		}
-	case BoolVal:
-		return ast.BoolKeyword{
-			Position: lexer.Position{},
-		}
-	case NullVal:
-		return ast.NullKeyword{
-			Position: lexer.Position{},
-		}
-	case FunctionVal, NativeFnVal:
-		return ast.FunKeyword{
-			Position: lexer.Position{},
-		}
-	default:
-		panic("InferType: unsupported RuntimeVal")
 	}
 }
