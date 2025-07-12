@@ -35,8 +35,7 @@ func createTypeTokenLookups() {
 			Position: token.Position,
 		}
 	})
-	type_nud(lexer.TYPE, primary, parseTypeDecl)
-	type_nud(lexer.STRUCT, primary, parseStructType)
+	type_nud(lexer.STRUCT, primary, parseStruct)
 	type_nud(lexer.NULL, primary, parsePrimaryType)
 	type_nud(lexer.UNDEFINED, primary, parsePrimaryType)
 	type_nud(lexer.FUN, primary, parsePrimaryType)
@@ -74,30 +73,13 @@ func parse_type(p *parser, bp binding_power) ast.Type {
 	return left
 }
 
-func parseTypeDecl(p *parser) ast.Type {
-	startPos := p.advance().Position.StartPos
-	alias := p.expect(lexer.IDENTIFIER).Value
-
-	p.expect(lexer.EQUALS)
-
-	aliasType := parse_type(p, defalt_bp)
-
-	return ast.TypeAliasDecl{
-		Name: alias,
-		Type: aliasType,
-		Position: lexer.Position{
-			StartPos: startPos,
-			EndPos:   aliasType.Pos().EndPos,
-		},
-	}
-}
-
-func parseStructType(p *parser) ast.Type {
+func parseStruct(p *parser) ast.Type {
 	startPos := p.advance().Position.StartPos
 	members := make([]ast.Member, 0)
 	properties := make([]ast.PropertySignature, 0)
 	methods := make([]ast.MethodSignature, 0)
 
+	p.expect(lexer.OPEN_CURLY)
 	for !p.currentToken().IsOneOfMany(lexer.CLOSE_CURLY, lexer.EOF) {
 		name := p.expect(lexer.IDENTIFIER).Value
 		if p.currentTokenKind() == lexer.COLON {
@@ -123,7 +105,9 @@ func parseStructType(p *parser) ast.Type {
 			})
 		}
 
-		p.expect(lexer.COMMA)
+		if p.currentTokenKind() != lexer.CLOSE_CURLY {
+			p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between properties in structure declaration at %s", p.currentToken().Position.ToString()))
+		}
 	}
 
 	for _, p := range properties {
@@ -133,7 +117,7 @@ func parseStructType(p *parser) ast.Type {
 		members = append(members, m)
 	}
 
-	return ast.StructType{
+	return ast.Struct{
 		Members: members,
 		Position: lexer.Position{
 			StartPos: startPos,
@@ -143,7 +127,6 @@ func parseStructType(p *parser) ast.Type {
 }
 
 func parsePrimaryType(p *parser) ast.Type {
-
 	switch p.currentTokenKind() {
 	case lexer.NULL:
 		p.advance()

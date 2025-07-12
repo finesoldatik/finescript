@@ -146,3 +146,21 @@ func parseIfStmt(p *parser) ast.Stmt {
 		},
 	}
 }
+
+func parseTypeDecl(p *parser) ast.Stmt {
+	startPos := p.advance().Position.StartPos
+	alias := p.expect(lexer.IDENTIFIER).Value
+
+	p.expect(lexer.ASSIGNMENT)
+
+	aliasType := parse_type(p, defalt_bp)
+
+	return ast.TypeAliasDecl{
+		Name: alias,
+		Type: aliasType,
+		Position: lexer.Position{
+			StartPos: startPos,
+			EndPos:   aliasType.Pos().EndPos,
+		},
+	}
+}

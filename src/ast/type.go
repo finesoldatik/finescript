@@ -151,17 +151,6 @@ func (t TypeAlias) Pos() lexer.Position {
 	return t.Position
 }
 
-type TypeAliasDecl struct {
-	Name     string
-	Type     Type
-	Position lexer.Position
-}
-
-func (t TypeAliasDecl) _type() {}
-func (t TypeAliasDecl) Pos() lexer.Position {
-	return t.Position
-}
-
 type ArrayType struct {
 	ElementType Type
 	Position    lexer.Position
@@ -222,13 +211,13 @@ type MethodSignature struct {
 
 func (t MethodSignature) member() {}
 
-type StructType struct {
+type Struct struct {
 	Members  []Member
 	Type     Type
 	Position lexer.Position
 }
 
-func (t StructType) _type() {}
-func (t StructType) Pos() lexer.Position {
+func (t Struct) _type() {}
+func (t Struct) Pos() lexer.Position {
 	return t.Position
 }

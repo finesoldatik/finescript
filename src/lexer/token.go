@@ -244,6 +244,10 @@ func TokenKindString(kind TokenKind) string {
 		return "yay"
 	case OOPS:
 		return "oops"
+	case TYPE:
+		return "type"
+	case STRUCT:
+		return "struct"
 	case INT_TYPE:
 		return "int_type"
 	case FLOAT_TYPE:

@@ -106,4 +106,7 @@ func createTokenLookups() {
 	stmt(lexer.CONST, parseVarDecl)
 	stmt(lexer.FUN, parseFunDecl)
 	stmt(lexer.IF, parseIfStmt)
+
+	// Types
+	stmt(lexer.TYPE, parseTypeDecl)
 }

@@ -63,3 +63,10 @@ type NativeFnVal struct {
 }
 
 func (r NativeFnVal) runtime_val() {}
+
+type TypeAliasVal struct {
+	Name string
+	Type ast.Type
+}
+
+func (r TypeAliasVal) runtime_val() {}

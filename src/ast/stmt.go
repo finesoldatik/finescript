@@ -72,3 +72,14 @@ func (s IfStmt) stmt() {}
 func (s IfStmt) Pos() lexer.Position {
 	return s.Position
 }
+
+type TypeAliasDecl struct {
+	Name     string
+	Type     Type
+	Position lexer.Position
+}
+
+func (t TypeAliasDecl) stmt() {}
+func (t TypeAliasDecl) Pos() lexer.Position {
+	return t.Position
+}
