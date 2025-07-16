@@ -2,6 +2,9 @@ package ast
 
 import "finescript/src/lexer"
 
+/*
+"string"
+*/
 type StringLiteralType struct {
 	Type     string
 	Position lexer.Position
@@ -12,6 +15,9 @@ func (t StringLiteralType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+42
+*/
 type IntLiteralType struct {
 	Type     int64
 	Position lexer.Position
@@ -22,6 +28,9 @@ func (t IntLiteralType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+42.0
+*/
 type FloatLiteralType struct {
 	Type     float64
 	Position lexer.Position
@@ -32,6 +41,9 @@ func (t FloatLiteralType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+true
+*/
 type BoolLiteralType struct {
 	Type     bool
 	Position lexer.Position
@@ -42,6 +54,9 @@ func (t BoolLiteralType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+int
+*/
 type IntKeyword struct {
 	Position lexer.Position
 }
@@ -51,6 +66,9 @@ func (t IntKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+float
+*/
 type FloatKeyword struct {
 	Position lexer.Position
 }
@@ -60,6 +78,9 @@ func (t FloatKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+string
+*/
 type StringKeyword struct {
 	Position lexer.Position
 }
@@ -69,6 +90,9 @@ func (t StringKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+bool
+*/
 type BoolKeyword struct {
 	Position lexer.Position
 }
@@ -78,6 +102,9 @@ func (t BoolKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+null
+*/
 type NullKeyword struct {
 	Position lexer.Position
 }
@@ -87,6 +114,9 @@ func (t NullKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+undefined
+*/
 type UndefinedKeyword struct {
 	Position lexer.Position
 }
@@ -96,6 +126,9 @@ func (t UndefinedKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+object
+*/
 type ObjectKeyword struct {
 	Position lexer.Position
 }
@@ -105,6 +138,9 @@ func (t ObjectKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+array
+*/
 type ArrayKeyword struct {
 	Position lexer.Position
 }
@@ -114,6 +150,9 @@ func (t ArrayKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+any
+*/
 type AnyKeyword struct {
 	Position lexer.Position
 }
@@ -123,6 +162,9 @@ func (t AnyKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+void
+*/
 type VoidKeyword struct {
 	Position lexer.Position
 }
@@ -132,6 +174,9 @@ func (t VoidKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+fun
+*/
 type FunKeyword struct {
 	Position lexer.Position
 }
@@ -141,6 +186,9 @@ func (t FunKeyword) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+name
+*/
 type TypeAlias struct {
 	Name     string
 	Position lexer.Position
@@ -151,6 +199,9 @@ func (t TypeAlias) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+[]int
+*/
 type ArrayType struct {
 	ElementType Type
 	Position    lexer.Position
@@ -161,6 +212,9 @@ func (t ArrayType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+(int | string)
+*/
 type UnionType struct {
 	Types    []Type
 	Position lexer.Position
@@ -171,6 +225,9 @@ func (t UnionType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+(int & 42)
+*/
 type IntersectionType struct {
 	Types    []Type
 	Position lexer.Position
@@ -181,6 +238,9 @@ func (t IntersectionType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+fun (params) => type
+*/
 type FunType struct {
 	Params   []Param
 	ReturnType     Type
@@ -192,10 +252,16 @@ func (t FunType) Pos() lexer.Position {
 	return t.Position
 }
 
+/*
+member
+*/
 type Member interface {
 	member()
 }
 
+/*
+name: type
+*/
 type PropertySignature struct {
 	Name string
 	Type Type
@@ -203,6 +269,9 @@ type PropertySignature struct {
 
 func (t PropertySignature) member() {}
 
+/*
+name(params): type
+*/
 type MethodSignature struct {
 	Name   string
 	Params []Param
@@ -211,9 +280,14 @@ type MethodSignature struct {
 
 func (t MethodSignature) member() {}
 
+/*
+struct {
+	name1: type,
+	name2(params): type
+}
+*/
 type Struct struct {
 	Members  []Member
-	Type     Type
 	Position lexer.Position
 }
 

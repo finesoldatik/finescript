@@ -37,8 +37,14 @@ var rootCmd = &cobra.Command{
 			}
 
 			source := strings.TrimSpace(text)
-			tokens := lexer.Tokenize(source)
-			ast := parser.Parse(tokens, source)
+			tokens, errs := lexer.Tokenize(source)
+			if len(errs) > 0 {
+				panic(strings.Join(errs, "\n"))
+			}
+			ast, errs := parser.Parse(tokens, source)
+			if len(errs) > 0 {
+				panic(strings.Join(errs, "\n"))
+			}
 			result := runtime.EvaluateStmt(ast, env)
 			println(fmt.Sprintf("\n%s", runtime.Format(result)))
 		}
@@ -61,11 +67,17 @@ var runCmd = &cobra.Command{
 		durationReadFile := time.Since(startReadFile)
 
 		startLexer := time.Now()
-		tokens := lexer.Tokenize(source)
+		tokens, errs := lexer.Tokenize(source)
+		if len(errs) > 0 {
+			panic(strings.Join(errs, "\n"))
+		}
 		durationLexer := time.Since(startLexer)
 
 		startParser := time.Now()
-		ast := parser.Parse(tokens, source)
+		ast, errs := parser.Parse(tokens, source)
+		if len(errs) > 0 {
+			panic(strings.Join(errs, "\n"))
+		}
 		durationParser := time.Since(startParser)
 
 		startInterpreter := time.Now()

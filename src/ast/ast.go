@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"finescript/src/helpers"
 	"finescript/src/lexer"
 )
 
@@ -20,10 +19,13 @@ type Type interface {
 	Pos() lexer.Position
 }
 
-func ExpectExpr[T Expr](expr Expr) T {
-	return helpers.ExpectType[T](expr)
+type Error struct {
+	Position *lexer.Position
 }
 
-func ExpectStmt[T Stmt](stmt Stmt) T {
-	return helpers.ExpectType[T](stmt)
+func (e Error) stmt()  {}
+func (e Error) expr()  {}
+func (e Error) _type() {}
+func (e Error) Pos() lexer.Position {
+	return *e.Position
 }

@@ -34,6 +34,10 @@ type NullVal struct{}
 
 func (r NullVal) runtime_val() {}
 
+type UndefinedVal struct{}
+
+func (r UndefinedVal) runtime_val() {}
+
 // type ArrayVal struct {
 // 	Elements []RuntimeVal
 // }
@@ -50,6 +54,7 @@ type FunctionVal struct {
 	Name           string
 	Params         []ast.Param
 	Body           []ast.Stmt
+	ReturnType     ast.Type
 	DeclarationEnv Environment
 }
 

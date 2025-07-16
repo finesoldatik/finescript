@@ -10,9 +10,10 @@ type parser struct {
 	tokens        []lexer.Token
 	pos           int
 	initialSource string
+	errors        []string
 }
 
-func createParser(tokens []lexer.Token, initialSource string) *parser {
+func newParser(tokens []lexer.Token, initialSource string) *parser {
 	createTokenLookups()
 	createTypeTokenLookups()
 
@@ -20,13 +21,14 @@ func createParser(tokens []lexer.Token, initialSource string) *parser {
 		tokens:        tokens,
 		pos:           0,
 		initialSource: initialSource,
+		errors:        make([]string, 0),
 	}
 
 	return p
 }
 
-func Parse(tokens []lexer.Token, initialSource string) ast.Program {
-	p := createParser(tokens, initialSource)
+func Parse(tokens []lexer.Token, initialSource string) (ast.Program, []string) {
+	p := newParser(tokens, initialSource)
 	body := make([]ast.Stmt, 0)
 
 	for p.hasTokens() {
@@ -34,12 +36,13 @@ func Parse(tokens []lexer.Token, initialSource string) ast.Program {
 	}
 
 	return ast.Program{
-		Body: body,
-		Position: lexer.Position{
-			StartPos: 0,
-			EndPos:   0,
+			Body: body,
+			Position: lexer.Position{
+				StartPos: 0,
+				EndPos:   body[len(body)-1].Pos().EndPos,
+			},
 		},
-	}
+		p.errors
 }
 
 func (p *parser) currentToken() lexer.Token {
@@ -72,17 +75,25 @@ func (p *parser) expectError(expectedKind lexer.TokenKind, err any) lexer.Token 
 	token := p.currentToken()
 	if token.Kind != expectedKind {
 		if err == nil {
-			panic(
-				fmt.Sprintf("Syntax error: expected %s but got %s (\"%s\") at %s:\n%s",
-					lexer.TokenKindString(expectedKind),
-					lexer.TokenKindString(token.Kind),
-					token.Value,
-					token.Position.ToString(),
-					p.initialSource[token.Position.StartPos:token.Position.EndPos],
-				),
-			)
+			p.errors = append(p.errors, fmt.Sprintf("Syntax error: expected %s but got %s (\"%s\") at %s:\n%s",
+				lexer.TokenKindString(expectedKind),
+				lexer.TokenKindString(token.Kind),
+				token.Value,
+				token.Position.String(),
+				p.initialSource[token.Position.StartPos:token.Position.EndPos],
+			))
+			return lexer.Token{
+				Kind:     lexer.ERROR,
+				Value:    token.Position.String(),
+				Position: token.Position,
+			}
 		} else {
-			p.error(err, &token.Position)
+			p.errors = append(p.errors, p.error(err, &token.Position))
+			return lexer.Token{
+				Kind:     lexer.ERROR,
+				Value:    token.Position.String(),
+				Position: token.Position,
+			}
 		}
 	}
 	return p.advance()
@@ -92,11 +103,11 @@ func (p *parser) expect(expectedKind lexer.TokenKind) lexer.Token {
 	return p.expectError(expectedKind, nil)
 }
 
-func (p *parser) error(err any, pos *lexer.Position) {
+func (p *parser) error(err any, pos *lexer.Position) string {
 	if pos == nil {
 		tokenPos := p.currentToken().Position
-		panic(fmt.Sprintf("Parser Error at %s:\n%s\n%s", tokenPos.ToString(), p.initialSource[tokenPos.StartPos:tokenPos.EndPos], err))
+		return fmt.Sprintf("Parser Error at %s:\n%s\n%s", tokenPos.String(), p.initialSource[tokenPos.StartPos:tokenPos.EndPos], err)
 	} else {
-		panic(fmt.Sprintf("Parser Error at %s:\n%s\n%s", pos.ToString(), p.initialSource[pos.StartPos:pos.EndPos], err))
+		return fmt.Sprintf("Parser Error at %s:\n%s\n%s", pos.String(), p.initialSource[pos.StartPos:pos.EndPos], err)
 	}
 }

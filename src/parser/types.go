@@ -6,68 +6,74 @@ import (
 	"fmt"
 )
 
-type type_nud_handler func(p *parser) ast.Type
-type type_led_handler func(p *parser, left ast.Type, bp binding_power) ast.Type
+type typeNUDHandler func(p *parser) ast.Type
+type typeLEDHandler func(p *parser, left ast.Type, bp bindingPower) ast.Type
 
-type type_nud_lookup map[lexer.TokenKind]type_nud_handler
-type type_led_lookup map[lexer.TokenKind]type_led_handler
-type type_bp_lookup map[lexer.TokenKind]binding_power
+type typeNUDLookup map[lexer.TokenKind]typeNUDHandler
+type typeLEDLookup map[lexer.TokenKind]typeLEDHandler
+type typeBPLookup map[lexer.TokenKind]bindingPower
 
-var type_bp_lu = type_bp_lookup{}
-var type_nud_lu = type_nud_lookup{}
-var type_led_lu = type_led_lookup{}
+var typeNUDLU = typeNUDLookup{}
+var typeLEDLU = typeLEDLookup{}
+var typeBPLU = typeBPLookup{}
 
-func type_led(kind lexer.TokenKind, bp binding_power, led_fn type_led_handler) {
-	type_bp_lu[kind] = bp
-	type_led_lu[kind] = led_fn
+func typeNUD(kind lexer.TokenKind, bp bindingPower, nudFn typeNUDHandler) {
+	typeBPLU[kind] = bp
+	typeNUDLU[kind] = nudFn
 }
 
-func type_nud(kind lexer.TokenKind, bp binding_power, nud_fn type_nud_handler) {
-	type_bp_lu[kind] = bp
-	type_nud_lu[kind] = nud_fn
+func typeLED(kind lexer.TokenKind, bp bindingPower, ledFn typeLEDHandler) {
+	typeBPLU[kind] = bp
+	typeLEDLU[kind] = ledFn
 }
 
 func createTypeTokenLookups() {
-	type_nud(lexer.IDENTIFIER, primary, func(p *parser) ast.Type {
+	typeNUD(lexer.IDENTIFIER, primary, func(p *parser) ast.Type {
 		token := p.advance()
 		return ast.TypeAlias{
 			Name:     token.Value,
 			Position: token.Position,
 		}
 	})
-	type_nud(lexer.STRUCT, primary, parseStruct)
-	type_nud(lexer.NULL, primary, parsePrimaryType)
-	type_nud(lexer.UNDEFINED, primary, parsePrimaryType)
-	type_nud(lexer.FUN, primary, parsePrimaryType)
-	type_nud(lexer.INT_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.FLOAT_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.STRING_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.BOOL_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.OBJECT_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.ARRAY_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.ANY_TYPE, primary, parsePrimaryType)
-	type_nud(lexer.VOID_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.STRUCT, primary, parseStruct)
+	typeNUD(lexer.NULL, primary, parsePrimaryType)
+	typeNUD(lexer.UNDEFINED, primary, parsePrimaryType)
+	typeNUD(lexer.FUN, primary, parsePrimaryType)
+	typeNUD(lexer.INT_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.FLOAT_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.STRING_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.BOOL_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.OBJECT_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.ARRAY_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.ANY_TYPE, primary, parsePrimaryType)
+	typeNUD(lexer.VOID_TYPE, primary, parsePrimaryType)
 }
 
-func parse_type(p *parser, bp binding_power) ast.Type {
-	tokenKind := p.currentTokenKind()
-	nud_fn, exists := type_nud_lu[tokenKind]
+func parseType(p *parser, bp bindingPower) ast.Type {
+	token := p.currentToken()
+	nudFn, exists := typeNUDLU[token.Kind]
 
 	if !exists {
-		panic(fmt.Sprintf("TYPE_NUD Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
+		p.errors = append(p.errors, fmt.Sprintf("TYPE_NUD Handler expected for token %s at %s\n", lexer.TokenKindString(token.Kind), token.Position.String()))
+		return ast.Error{
+			Position: &token.Position,
+		}
 	}
 
-	left := nud_fn(p)
+	left := nudFn(p)
 
-	for type_bp_lu[p.currentTokenKind()] > bp {
-		tokenKind = p.currentTokenKind()
-		led_fn, exists := type_led_lu[tokenKind]
+	for typeBPLU[p.currentTokenKind()] > bp {
+		token = p.currentToken()
+		ledFn, exists := typeLEDLU[token.Kind]
 
 		if !exists {
-			panic(fmt.Sprintf("TYPE_LED Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
+			p.errors = append(p.errors, fmt.Sprintf("TYPE_LED Handler expected for token %s at %s\n", lexer.TokenKindString(token.Kind), token.Position.String()))
+			return ast.Error{
+				Position: &token.Position,
+			}
 		}
 
-		left = led_fn(p, left, bp)
+		left = ledFn(p, left, bp)
 	}
 
 	return left
@@ -79,23 +85,50 @@ func parseStruct(p *parser) ast.Type {
 	properties := make([]ast.PropertySignature, 0)
 	methods := make([]ast.MethodSignature, 0)
 
-	p.expect(lexer.OPEN_CURLY)
-	for !p.currentToken().IsOneOfMany(lexer.CLOSE_CURLY, lexer.EOF) {
-		name := p.expect(lexer.IDENTIFIER).Value
+	expected := p.expect(lexer.OPEN_CURLY)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
+	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_CURLY {
+		expectedName := p.expect(lexer.IDENTIFIER)
+		name := expectedName.Value
+		if expectedName.Kind == lexer.ERROR {
+			return ast.Error{
+				Position: &expectedName.Position,
+			}
+		}
 		if p.currentTokenKind() == lexer.COLON {
 			p.advance()
 			properties = append(properties, ast.PropertySignature{
 				Name: name,
-				Type: parse_type(p, defalt_bp),
+				Type: parseType(p, defaultBP),
 			})
 		} else {
-			p.expect(lexer.OPEN_PAREN)
-			params := parseParams(p)
-			p.expect(lexer.CLOSE_PAREN)
+			expectedOpenParen := p.expect(lexer.OPEN_PAREN)
+			if expectedOpenParen.Kind == lexer.ERROR {
+				return ast.Error{
+					Position: &expectedOpenParen.Position,
+				}
+			}
+			params, err := parseParams(p)
+			if err.Position != nil {
+				return ast.Error{
+					Position: err.Position,
+				}
+			}
+			expectedCloseParen := p.expect(lexer.CLOSE_PAREN)
+			if expectedCloseParen.Kind == lexer.ERROR {
+				return ast.Error{
+					Position: &expectedCloseParen.Position,
+				}
+			}
+
 			var methodType ast.Type = ast.VoidKeyword{}
 			if p.currentTokenKind() == lexer.COLON {
 				p.advance()
-				methodType = parse_type(p, defalt_bp)
+				methodType = parseType(p, defaultBP)
 			}
 
 			methods = append(methods, ast.MethodSignature{
@@ -106,7 +139,10 @@ func parseStruct(p *parser) ast.Type {
 		}
 
 		if p.currentTokenKind() != lexer.CLOSE_CURLY {
-			p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between properties in structure declaration at %s", p.currentToken().Position.ToString()))
+			expected := p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between properties in structure declaration at %s", p.currentToken().Position.String()))
+			return ast.Error{
+				Position: &expected.Position,
+			}
 		}
 	}
 
@@ -117,17 +153,25 @@ func parseStruct(p *parser) ast.Type {
 		members = append(members, m)
 	}
 
+	expectedCloseCurly := p.expect(lexer.CLOSE_CURLY)
+	if expectedCloseCurly.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expectedCloseCurly.Position,
+		}
+	}
+
 	return ast.Struct{
 		Members: members,
 		Position: lexer.Position{
 			StartPos: startPos,
-			EndPos:   p.expect(lexer.CLOSE_CURLY).Position.EndPos,
+			EndPos:   expectedCloseCurly.Position.EndPos,
 		},
 	}
 }
 
 func parsePrimaryType(p *parser) ast.Type {
-	switch p.currentTokenKind() {
+	token := p.currentToken()
+	switch token.Kind {
 	case lexer.NULL:
 		p.advance()
 		return ast.NullKeyword{}
@@ -162,6 +206,9 @@ func parsePrimaryType(p *parser) ast.Type {
 		p.advance()
 		return ast.VoidKeyword{}
 	default:
-		panic(fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(p.currentTokenKind()), p.currentToken().Position.ToString()))
+		p.errors = append(p.errors, fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(token.Kind), token.Position.String()))
+		return ast.Error{
+			Position: &token.Position,
+		}
 	}
 }

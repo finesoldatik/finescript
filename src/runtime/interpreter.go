@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"finescript/src/ast"
+	"fmt"
 )
 
 func EvaluateStmt(node ast.Stmt, env Environment) RuntimeVal {
@@ -17,6 +18,7 @@ func EvaluateStmt(node ast.Stmt, env Environment) RuntimeVal {
 			Name:           stmt.Name,
 			Params:         stmt.Params,
 			Body:           stmt.Body,
+			ReturnType:     stmt.ReturnType,
 			DeclarationEnv: env,
 		}, true)
 	case ast.TypeAliasDecl:
@@ -71,6 +73,6 @@ func evaluateExpr(node ast.Expr, env Environment) RuntimeVal {
 	case ast.CallExpr:
 		return evalCallExpr(expr, env)
 	default:
-		panic("Unknown Expr")
+		panic(fmt.Sprintf("Unknown Expr at %s", expr.Pos().String()))
 	}
 }

@@ -19,16 +19,18 @@ type lexer struct {
 	Tokens   []Token
 	source   string
 	pos      int
+	errors   []string
 }
 
-func Tokenize(source string) []Token {
+func Tokenize(source string) ([]Token, []string) {
 	lex := createLexer(source)
 
 	for !lex.at_eof() {
 		matched := false
+		remainder := lex.remainder()
 
 		for _, pattern := range lex.patterns {
-			loc := pattern.regex.FindStringIndex(lex.remainder())
+			loc := pattern.regex.FindStringIndex(remainder)
 			if loc != nil && loc[0] == 0 {
 				pattern.handler(lex, pattern.regex)
 				matched = true
@@ -37,7 +39,8 @@ func Tokenize(source string) []Token {
 		}
 
 		if !matched {
-			panic(fmt.Sprintf("unrecognized token near \"%v\" at %d", helpers.Ellipsis(lex.remainder(), 20), lex.pos))
+			lex.errors = append(lex.errors, fmt.Sprintf("unrecognized token near \"%v\" at %d", helpers.Ellipsis(remainder, 20), lex.pos))
+			lex.advanceN(len(remainder))
 		}
 	}
 
@@ -45,7 +48,7 @@ func Tokenize(source string) []Token {
 		StartPos: lex.pos,
 		EndPos:   lex.pos,
 	}})
-	return lex.Tokens
+	return lex.Tokens, lex.errors
 }
 
 func (lex *lexer) advanceN(n int) int {
@@ -76,15 +79,16 @@ func (lex *lexer) at_eof() bool {
 func createLexer(source string) *lexer {
 	return &lexer{
 		pos:    0,
+		errors: make([]string, 0),
 		source: source,
 		Tokens: make([]Token, 0),
 		patterns: []regexPattern{
-			{regexp.MustCompile(`\/\/.*|\/\*[\s\S]*?\*\/`), commentHandler},
+			{regexp.MustCompile(`\/\/.*|\/\*[\s\S]*?\*\/`), skipHandler},
 			{regexp.MustCompile(`\s+`), skipHandler},
 			{regexp.MustCompile(`^\s*$`), skipHandler},
 			{regexp.MustCompile(`"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'`), stringHandler},
-			{regexp.MustCompile(`[0-9]+\.[0-9]+`), floatHandler},
-			{regexp.MustCompile(`[0-9]+`), intHandler},
+			{regexp.MustCompile(`[0-9]+\.[0-9]+`), numberHandler(FLOAT)},
+			{regexp.MustCompile(`[0-9]+`), numberHandler(INT)},
 			{regexp.MustCompile(`[a-zA-Z_][a-zA-Z0-9_]*`), identifierHandler},
 			{regexp.MustCompile(`\[`), defaultHandler(OPEN_BRACKET, "[")},
 			{regexp.MustCompile(`\]`), defaultHandler(CLOSE_BRACKET, "]")},
@@ -112,9 +116,9 @@ func createLexer(source string) *lexer {
 			{regexp.MustCompile(`--`), defaultHandler(MINUS_MINUS, "--")},
 			{regexp.MustCompile(`\+=`), defaultHandler(PLUS_EQUALS, "+=")},
 			{regexp.MustCompile(`-=`), defaultHandler(MINUS_EQUALS, "-=")},
-			{regexp.MustCompile(`/=`), defaultHandler(SLASH_EQUALS, "/=")},
-			{regexp.MustCompile(`\*=`), defaultHandler(STAR_EQUALS, "*=")},
-			{regexp.MustCompile(`%=`), defaultHandler(PERCENT_EQUALS, "%=")},
+			// {regexp.MustCompile(`/=`), defaultHandler(SLASH_EQUALS, "/=")},
+			// {regexp.MustCompile(`\*=`), defaultHandler(STAR_EQUALS, "*=")},
+			// {regexp.MustCompile(`%=`), defaultHandler(PERCENT_EQUALS, "%=")},
 			{regexp.MustCompile(`\+`), defaultHandler(PLUS, "+")},
 			{regexp.MustCompile(`-`), defaultHandler(MINUS, "-")},
 			{regexp.MustCompile(`/`), defaultHandler(SLASH, "/")},
@@ -126,10 +130,14 @@ func createLexer(source string) *lexer {
 
 func defaultHandler(kind TokenKind, value string) regexHandler {
 	return func(lex *lexer, _ *regexp.Regexp) {
-		lex.push(Token{kind, value, Position{
-			StartPos: lex.pos,
-			EndPos:   lex.advanceN(len(value)),
-		}})
+		lex.push(Token{
+			Kind:  kind,
+			Value: value,
+			Position: Position{
+				StartPos: lex.pos,
+				EndPos:   lex.advanceN(len(value)),
+			},
+		})
 	}
 }
 
@@ -137,7 +145,7 @@ func stringHandler(lex *lexer, regex *regexp.Regexp) {
 	startPos := lex.pos
 	match := regex.FindStringIndex(lex.remainder())
 	if match == nil {
-		panic(fmt.Sprintf("unterminated string near \"%v\" at %d", lex.remainder(), lex.pos))
+		lex.errors = append(lex.errors, fmt.Sprintf("unterminated string near \"%v\" at %d", lex.remainder(), lex.pos))
 	}
 
 	stringWithQuotes := lex.remainder()[match[0]:match[1]]
@@ -145,45 +153,48 @@ func stringHandler(lex *lexer, regex *regexp.Regexp) {
 	stringLiteral := stringWithQuotes[1 : len(stringWithQuotes)-1]
 	stringLiteral = escapeRegex.ReplaceAllStringFunc(stringLiteral, helpers.RemoveEscapeSigns)
 
-	lex.push(Token{STRING, stringLiteral, Position{
-		StartPos: startPos,
-		EndPos:   lex.advanceN(len(stringWithQuotes)),
-	}})
+	lex.push(Token{
+		Kind:  STRING,
+		Value: stringLiteral,
+		Position: Position{
+			StartPos: startPos,
+			EndPos:   lex.advanceN(len(stringWithQuotes)),
+		},
+	})
 }
 
-func floatHandler(lex *lexer, regex *regexp.Regexp) {
-	startPos := lex.pos
-	match := regex.FindString(lex.remainder())
-	lex.push(Token{FLOAT, match, Position{
-		StartPos: startPos,
-		EndPos:   lex.advanceN(len(match)),
-	}})
-}
-
-func intHandler(lex *lexer, regex *regexp.Regexp) {
-	startPos := lex.pos
-	match := regex.FindString(lex.remainder())
-	lex.push(Token{INT, match, Position{
-		StartPos: startPos,
-		EndPos:   lex.advanceN(len(match)),
-	}})
+func numberHandler(kind TokenKind) func(*lexer, *regexp.Regexp) {
+	return func(lex *lexer, regex *regexp.Regexp) {
+		startPos := lex.pos
+		match := regex.FindString(lex.remainder())
+		lex.push(Token{
+			Kind:  kind,
+			Value: match,
+			Position: Position{
+				StartPos: startPos,
+				EndPos:   lex.advanceN(len(match)),
+			},
+		})
+	}
 }
 
 func identifierHandler(lex *lexer, regex *regexp.Regexp) {
 	startPos := lex.pos
 	match := regex.FindString(lex.remainder())
 
+	tokenKind := IDENTIFIER
 	if kind, found := keywords[match]; found {
-		lex.push(Token{kind, match, Position{
-			StartPos: startPos,
-			EndPos:   lex.advanceN(len(match)),
-		}})
-	} else {
-		lex.push(Token{IDENTIFIER, match, Position{
-			StartPos: startPos,
-			EndPos:   lex.advanceN(len(match)),
-		}})
+		tokenKind = kind
 	}
+
+	lex.push(Token{
+		Kind:  tokenKind,
+		Value: match,
+		Position: Position{
+			StartPos: startPos,
+			EndPos:   lex.advanceN(len(match)),
+		},
+	})
 }
 
 func skipHandler(lex *lexer, regex *regexp.Regexp) {
@@ -192,12 +203,4 @@ func skipHandler(lex *lexer, regex *regexp.Regexp) {
 		return
 	}
 	lex.advanceN(len(match))
-}
-
-func commentHandler(lex *lexer, regex *regexp.Regexp) {
-	match := regex.FindString(lex.remainder())
-	if match == "" {
-		return
-	}
-	lex.advanceN(len(match)) // Пропускаем комментарий полностью
 }

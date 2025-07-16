@@ -264,8 +264,25 @@ func evalCallExpr(expr ast.CallExpr, env Environment) RuntimeVal {
 func evalAssignExpr(expr ast.AssignExpr, env Environment) RuntimeVal {
 	switch assigne := expr.Assigne.(type) {
 	case ast.Identifier:
+		equals := false
+		for typ := range inferType(env.lookupVar(assigne.Name).Value) {
+			for exprTyp := range inferType(evaluateExpr(expr.Expr, env)) {
+				if typ == exprTyp {
+					equals = true
+					break
+				}
+			}
+			if equals {
+				break
+			}
+		}
+
+		if !equals {
+			panic("Types of assigne and expr not equals")
+		}
+
 		switch expr.Op.Kind {
-		case lexer.EQUALS:
+		case lexer.ASSIGNMENT:
 			return env.assignVar(assigne.Name, evaluateExpr(expr.Expr, env))
 		case lexer.PLUS_EQUALS:
 			switch var_ := env.lookupVar(assigne.Name).Value.(type) {

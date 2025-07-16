@@ -76,8 +76,14 @@ func Input(args []RuntimeVal, env Environment) RuntimeVal {
 func Eval(args []RuntimeVal, env Environment) RuntimeVal {
 	handleArgs(len(args), 1)
 	if _, ok := args[0].(StringVal); ok {
-		tokens := lexer.Tokenize(args[0].(StringVal).Value)
-		ast := parser.Parse(tokens, args[0].(StringVal).Value)
+		tokens, errs := lexer.Tokenize(args[0].(StringVal).Value)
+		if len(errs) > 0 {
+			panic(strings.Join(errs, "\n"))
+		}
+		ast, errs := parser.Parse(tokens, args[0].(StringVal).Value)
+		if len(errs) > 0 {
+			panic(strings.Join(errs, "\n"))
+		}
 		result := EvaluateStmt(ast, GlobalEnv())
 		return result
 	}

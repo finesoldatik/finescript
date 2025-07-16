@@ -11,6 +11,10 @@ func resolveType(typ ast.Type, env Environment) ast.Type {
 		val := env.lookupVar(t.Name).Value
 		typeAlias, ok := val.(TypeAliasVal)
 		if !ok {
+			// p.errors = append(p.errors, fmt.Sprintf("Expected type alias, got something else at %s", typeAlias.Type.Pos().String()))
+			// return ast.Error{
+			// 	Position: typeAlias.Type.Pos(),
+			// }
 			panic("Expected type alias, got something else")
 		}
 		return resolveType(typeAlias.Type, env)
@@ -89,4 +93,33 @@ func resolveType(typ ast.Type, env Environment) ast.Type {
 	default:
 		panic("resolveType: Unknown type variant")
 	}
+}
+
+func inferType(val RuntimeVal) []ast.Type {
+	types := make([]ast.Type, 0)
+	switch r := val.(type) {
+	case IntVal:
+		types = append(types, ast.IntKeyword{}, ast.IntLiteralType{Type: r.Value})
+	case FloatVal:
+		types = append(types, ast.FloatKeyword{}, ast.FloatLiteralType{Type: r.Value})
+	case StringVal:
+		types = append(types, ast.StringKeyword{}, ast.StringLiteralType{Type: r.Value})
+	case BoolVal:
+		types = append(types, ast.BoolKeyword{}, ast.BoolLiteralType{Type: r.Value})
+	case NullVal:
+		types = append(types, ast.NullKeyword{})
+	case UndefinedVal:
+		types = append(types, ast.UndefinedKeyword{})
+	case FunctionVal:
+		types = append(types, ast.FunKeyword{}, ast.FunType{
+			Params:     r.Params,
+			ReturnType: r.ReturnType,
+		})
+	case NativeFnVal:
+		types = append(types, ast.FunKeyword{})
+	case TypeAliasVal:
+		types = append(types, ast.TypeAlias{Name: r.Name})
+	}
+
+	return types
 }

@@ -7,25 +7,31 @@ import (
 	"strconv"
 )
 
-func parseExpr(p *parser, bp binding_power) ast.Expr {
-	tokenKind := p.currentTokenKind()
-	nud_fn, exists := nud_lu[tokenKind]
+func parseExpr(p *parser, bp bindingPower) ast.Expr {
+	token := p.currentToken()
+	nudFn, exists := nudLU[token.Kind]
 
 	if !exists {
-		panic(fmt.Sprintf("NUD Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
+		p.errors = append(p.errors, fmt.Sprintf("NUD Handler expected for token %s at %s\n", lexer.TokenKindString(token.Kind), token.Position.String()))
+		return ast.Error{
+			Position: &token.Position,
+		}
 	}
 
-	left := nud_fn(p)
+	left := nudFn(p)
 
-	for bp_lu[p.currentTokenKind()] > bp {
-		tokenKind = p.currentTokenKind()
-		led_fn, exists := led_lu[tokenKind]
+	for bpLU[p.currentTokenKind()] > bp {
+		token = p.currentToken()
+		ledFn, exists := ledLU[token.Kind]
 
 		if !exists {
-			panic(fmt.Sprintf("LED Handler expected for token %s at %s\n", lexer.TokenKindString(tokenKind), p.currentToken().Position.ToString()))
+			p.errors = append(p.errors, fmt.Sprintf("LED Handler expected for token %s at %s\n", lexer.TokenKindString(token.Kind), token.Position.String()))
+			return ast.Error{
+				Position: &token.Position,
+			}
 		}
 
-		left = led_fn(p, left, bp)
+		left = ledFn(p, left, bp)
 	}
 
 	if p.currentTokenKind() == lexer.SEMI_COLON {
@@ -36,17 +42,24 @@ func parseExpr(p *parser, bp binding_power) ast.Expr {
 }
 
 func parsePrimaryExpr(p *parser) ast.Expr {
-	switch p.currentTokenKind() {
+	token := p.currentToken()
+	switch token.Kind {
 	case lexer.INT:
 		token := p.advance()
-		number, _ := strconv.ParseInt(token.Value, 0, 64)
+		number, err := strconv.ParseInt(token.Value, 0, 64)
+		if err != nil {
+			panic(fmt.Sprintf("invalid integer literal: %s", token.Value))
+		}
 		return ast.IntLiteral{
 			Value:    number,
 			Position: token.Position,
 		}
 	case lexer.FLOAT:
 		token := p.advance()
-		number, _ := strconv.ParseFloat(token.Value, 64)
+		number, err := strconv.ParseFloat(token.Value, 64)
+		if err != nil {
+			panic(fmt.Sprintf("invalid float literal: %s", token.Value))
+		}
 		return ast.FloatLiteral{
 			Value:    number,
 			Position: token.Position,
@@ -82,13 +95,19 @@ func parsePrimaryExpr(p *parser) ast.Expr {
 			Position: p.advance().Position,
 		}
 	default:
-		panic(fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(p.currentTokenKind()), p.currentToken().Position.ToString()))
+		p.errors = append(p.errors, fmt.Sprintf("Cannot create primary_expr from %s at %s", lexer.TokenKindString(token.Kind), token.Position.String()))
+		return ast.Error{
+			Position: &token.Position,
+		}
 	}
 }
 
 func parseUnaryExpr(p *parser) ast.Expr {
 	operatorToken := p.advance()
 	expr := parseExpr(p, unary)
+	if err, ok := expr.(ast.Error); ok {
+		return err
+	}
 
 	return ast.UnaryExpr{
 		Op:   operatorToken,
@@ -100,7 +119,10 @@ func parseUnaryExpr(p *parser) ast.Expr {
 	}
 }
 
-func parseLedUnaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
+func parseLedUnaryExpr(p *parser, left ast.Expr, bp bindingPower) ast.Expr {
+	if err, ok := left.(ast.Error); ok {
+		return err
+	}
 	operatorToken := p.advance()
 
 	return ast.UnaryExpr{
@@ -113,9 +135,15 @@ func parseLedUnaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	}
 }
 
-func parseAssignExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
+func parseAssignExpr(p *parser, left ast.Expr, bp bindingPower) ast.Expr {
+	if err, ok := left.(ast.Error); ok {
+		return err
+	}
 	op := p.advance()
 	expr := parseExpr(p, bp)
+	if err, ok := expr.(ast.Error); ok {
+		return err
+	}
 
 	return ast.AssignExpr{
 		Assigne: left,
@@ -128,9 +156,15 @@ func parseAssignExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 	}
 }
 
-func parseBinaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
+func parseBinaryExpr(p *parser, left ast.Expr, bp bindingPower) ast.Expr {
+	if err, ok := left.(ast.Error); ok {
+		return err
+	}
 	operatorToken := p.advance()
-	right := parseExpr(p, defalt_bp)
+	right := parseExpr(p, defaultBP)
+	if err, ok := right.(ast.Error); ok {
+		return err
+	}
 
 	return ast.BinaryExpr{
 		Left:  left,
@@ -145,34 +179,94 @@ func parseBinaryExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
 
 func parseGroupingExpr(p *parser) ast.Expr {
 	p.advance()
-	expr := parseExpr(p, defalt_bp)
+	expr := parseExpr(p, defaultBP)
+	if err, ok := expr.(ast.Error); ok {
+		return err
+	}
 
 	if p.currentTokenKind() == lexer.SEMI_COLON {
 		p.advance()
 	}
 
-	p.expect(lexer.CLOSE_PAREN)
+	expected := p.expect(lexer.CLOSE_PAREN)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
 	return expr
 }
 
-func parseCallExpr(p *parser, left ast.Expr, bp binding_power) ast.Expr {
+func parseCallExpr(p *parser, left ast.Expr, bp bindingPower) ast.Expr {
+	if err, ok := left.(ast.Error); ok {
+		return err
+	}
 	startPos := p.advance().Position.StartPos
 	arguments := make([]ast.Expr, 0)
 
 	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
-		arguments = append(arguments, parseExpr(p, assignment))
+		expr := parseExpr(p, assignment)
+		if err, ok := expr.(ast.Error); ok {
+			return err
+		}
+		arguments = append(arguments, expr)
 
 		if p.currentTokenKind() != lexer.CLOSE_PAREN {
-			p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between parameters in function declaration at %s", p.currentToken().Position.ToString()))
+			expected := p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between parameters in function declaration at %s", p.currentToken().Position.String()))
+			if expected.Kind == lexer.ERROR {
+				return ast.Error{
+					Position: &expected.Position,
+				}
+			}
 		}
 	}
 
+	expected := p.expect(lexer.CLOSE_PAREN)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
 	return ast.CallExpr{
 		Caller: left,
 		Args:   arguments,
 		Position: lexer.Position{
 			StartPos: startPos,
-			EndPos:   p.expect(lexer.CLOSE_PAREN).Position.EndPos,
+			EndPos:   expected.Position.EndPos,
+		},
+	}
+}
+
+func parseConditionalExpr(p *parser, left ast.Expr, bp bindingPower) ast.Expr {
+	if err, ok := left.(ast.Error); ok {
+		return err
+	}
+	p.advance()
+
+	consequent := parseExpr(p, defaultBP)
+	if err, ok := consequent.(ast.Error); ok {
+		return err
+	}
+
+	
+	expected := p.expect(lexer.COLON)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
+	alternate := parseExpr(p, defaultBP)
+	if err, ok := alternate.(ast.Error); ok {
+		return err
+	}
+
+	return ast.ConditionalExpr{
+		Condition:  left,
+		Consequent: consequent,
+		Alternate:  alternate,
+		Position: lexer.Position{
+			StartPos: left.Pos().StartPos,
+			EndPos:   alternate.Pos().EndPos,
 		},
 	}
 }

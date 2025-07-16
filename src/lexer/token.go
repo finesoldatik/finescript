@@ -1,13 +1,19 @@
 package lexer
 
-import "fmt"
+import (
+	"fmt"
+	// "slices"
+)
 
 type TokenKind int
 
 const (
+	// Специальные
 	EOF TokenKind = iota
 	NULL
 	UNDEFINED
+
+	// Литералы
 	TRUE
 	FALSE
 	INT
@@ -24,7 +30,6 @@ const (
 	CLOSE_PAREN
 
 	// Равенство
-	ASSIGNMENT
 	EQUALS
 	NOT_EQUALS
 	NOT
@@ -51,11 +56,13 @@ const (
 	PLUS_PLUS
 	MINUS_MINUS
 
+	// Присваивание
+	ASSIGNMENT
 	PLUS_EQUALS
 	MINUS_EQUALS
-	STAR_EQUALS
-	SLASH_EQUALS
-	PERCENT_EQUALS
+	// STAR_EQUALS
+	// SLASH_EQUALS
+	// PERCENT_EQUALS
 
 	// Математика
 	PLUS
@@ -87,6 +94,8 @@ const (
 	ARRAY_TYPE
 	ANY_TYPE
 	VOID_TYPE
+
+	ERROR
 )
 
 var keywords = map[string]TokenKind{
@@ -124,7 +133,7 @@ type Position struct {
 	EndPos   int
 }
 
-func (pos Position) ToString() string {
+func (pos Position) String() string {
 	return fmt.Sprintf("%d:%d", pos.StartPos, pos.EndPos)
 }
 
@@ -134,137 +143,96 @@ type Token struct {
 	Position Position
 }
 
-func (tk Token) IsOneOfMany(expectedTokens ...TokenKind) bool {
-	for _, expected := range expectedTokens {
-		if expected == tk.Kind {
-			return true
-		}
-	}
+// func (tk Token) IsOneOf(kinds ...TokenKind) bool {
+// 	return slices.Contains(kinds, tk.Kind)
+// }
+// // Для проверки категорий токенов
+// func (k TokenKind) IsLiteral() bool {
+//     return k >= TRUE && k <= IDENTIFIER
+// }
 
-	return false
-}
+// func (k TokenKind) IsOperator() bool {
+//     return k >= EQUALS && k <= PERCENT
+// }
 
-func (token Token) Debug() {
-	fmt.Printf("%s()\n", TokenKindString(token.Kind))
+var tokenKindString = map[TokenKind]string{
+	EOF:       "eof",
+	NULL:      "null",
+	UNDEFINED: "undefined",
+
+	INT:        "int",
+	FLOAT:      "float",
+	STRING:     "string",
+	TRUE:       "true",
+	FALSE:      "false",
+	IDENTIFIER: "identifier",
+
+	OPEN_BRACKET:  "open_bracket",
+	CLOSE_BRACKET: "close_bracket",
+	OPEN_CURLY:    "open_curly",
+	CLOSE_CURLY:   "close_curly",
+	OPEN_PAREN:    "open_paren",
+	CLOSE_PAREN:   "close_paren",
+
+	EQUALS:     "equals",
+	NOT_EQUALS: "not_equals",
+	NOT:        "not",
+
+	LESS:           "less",
+	LESS_EQUALS:    "less_equals",
+	GREATER:        "greater",
+	GREATER_EQUALS: "greater_equals",
+
+	OR:  "or",
+	AND: "and",
+
+	DOT:        "dot",
+	DOT_DOT:    "dot_dot",
+	SEMI_COLON: "semi_colon",
+	COLON:      "colon",
+	QUESTION:   "question",
+	COMMA:      "comma",
+
+	PLUS_PLUS:   "plus_plus",
+	MINUS_MINUS: "minus_minus",
+
+	ASSIGNMENT:   "assignment",
+	PLUS_EQUALS:  "plus_equals",
+	MINUS_EQUALS: "minus_equals",
+
+	PLUS:    "plus",
+	MINUS:   "minus",
+	SLASH:   "slash",
+	STAR:    "star",
+	PERCENT: "percent",
+
+	LET:   "let",
+	VAR:   "var",
+	CONST: "const",
+
+	FUN:  "fun",
+	IF:   "if",
+	ELSE: "else",
+
+	YAY:  "yay",
+	OOPS: "oops",
+
+	TYPE:   "type",
+	STRUCT: "struct",
+
+	INT_TYPE:    "int_type",
+	FLOAT_TYPE:  "float_type",
+	STRING_TYPE: "string_type",
+	BOOL_TYPE:   "bool_type",
+	OBJECT_TYPE: "object_type",
+	ARRAY_TYPE:  "array_type",
+	ANY_TYPE:    "any_type",
+	VOID_TYPE:   "void_type",
 }
 
 func TokenKindString(kind TokenKind) string {
-	switch kind {
-	case EOF:
-		return "eof"
-	case NULL:
-		return "null"
-	case INT:
-		return "int"
-	case FLOAT:
-		return "float"
-	case STRING:
-		return "string"
-	case TRUE:
-		return "true"
-	case FALSE:
-		return "false"
-	case IDENTIFIER:
-		return "identifier"
-	case OPEN_BRACKET:
-		return "open_bracket"
-	case CLOSE_BRACKET:
-		return "close_bracket"
-	case OPEN_CURLY:
-		return "open_curly"
-	case CLOSE_CURLY:
-		return "close_curly"
-	case OPEN_PAREN:
-		return "open_paren"
-	case CLOSE_PAREN:
-		return "close_paren"
-	case ASSIGNMENT:
-		return "assignment"
-	case EQUALS:
-		return "equals"
-	case NOT_EQUALS:
-		return "not_equals"
-	case NOT:
-		return "not"
-	case LESS:
-		return "less"
-	case LESS_EQUALS:
-		return "less_equals"
-	case GREATER:
-		return "greater"
-	case GREATER_EQUALS:
-		return "greater_equals"
-	case OR:
-		return "or"
-	case AND:
-		return "and"
-	case DOT:
-		return "dot"
-	case DOT_DOT:
-		return "dot_dot"
-	case SEMI_COLON:
-		return "semi_colon"
-	case COLON:
-		return "colon"
-	case QUESTION:
-		return "question"
-	case COMMA:
-		return "comma"
-	case PLUS_PLUS:
-		return "plus_plus"
-	case MINUS_MINUS:
-		return "minus_minus"
-	case PLUS_EQUALS:
-		return "plus_equals"
-	case MINUS_EQUALS:
-		return "minus_equals"
-	case PLUS:
-		return "plus"
-	case MINUS:
-		return "minus"
-	case SLASH:
-		return "slash"
-	case STAR:
-		return "star"
-	case PERCENT:
-		return "percent"
-	case LET:
-		return "let"
-	case VAR:
-		return "var"
-	case CONST:
-		return "const"
-	case FUN:
-		return "fun"
-	case IF:
-		return "if"
-	case ELSE:
-		return "else"
-	case YAY:
-		return "yay"
-	case OOPS:
-		return "oops"
-	case TYPE:
-		return "type"
-	case STRUCT:
-		return "struct"
-	case INT_TYPE:
-		return "int_type"
-	case FLOAT_TYPE:
-		return "float_type"
-	case STRING_TYPE:
-		return "string_type"
-	case BOOL_TYPE:
-		return "bool_type"
-	case OBJECT_TYPE:
-		return "object_type"
-	case ARRAY_TYPE:
-		return "array_type"
-	case ANY_TYPE:
-		return "any_type"
-	case VOID_TYPE:
-		return "void_type"
-	default:
-		return fmt.Sprintf("unknown(%d)", kind)
+	if str, ok := tokenKindString[kind]; ok {
+		return str
 	}
+	return fmt.Sprintf("unknown(%d)", kind)
 }

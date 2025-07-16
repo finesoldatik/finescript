@@ -7,20 +7,19 @@ import (
 )
 
 func parseStmt(p *parser) ast.Stmt {
-	stmt_fn, exists := stmt_lu[p.currentTokenKind()]
-
-	if exists {
-		return stmt_fn(p)
+	if handler, exists := stmtLU[p.currentTokenKind()]; exists {
+		return handler(p)
 	}
 
 	return parseExprStmt(p)
 }
 
 func parseExprStmt(p *parser) ast.ExprStmt {
-	expr := parseExpr(p, defalt_bp)
+	expr := parseExpr(p, defaultBP)
 
 	return ast.ExprStmt{
-		Expr: expr,
+		Expr:     expr,
+		Position: expr.Pos(),
 	}
 }
 
@@ -32,11 +31,17 @@ func parseBlockStmt(p *parser) ast.Stmt {
 		body = append(body, parseStmt(p))
 	}
 
+	expected := p.expect(lexer.CLOSE_CURLY)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
 	return ast.BlockStmt{
 		Body: body,
 		Position: lexer.Position{
 			StartPos: startPos,
-			EndPos:   p.expect(lexer.CLOSE_CURLY).Position.EndPos,
+			EndPos:   expected.Position.EndPos,
 		},
 	}
 }
@@ -47,8 +52,13 @@ func parseVarDecl(p *parser) ast.Stmt {
 	identName := p.expectError(lexer.IDENTIFIER,
 		fmt.Sprintf("Following %s expected variable name however instead recieved %s instead\n",
 			lexer.TokenKindString(startToken.Kind), lexer.TokenKindString(p.currentTokenKind())))
+	if identName.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &identName.Position,
+		}
+	}
 
-	var assignmentValue ast.Expr
+	var assignmentValue ast.Expr = nil
 
 	if p.currentTokenKind() == lexer.ASSIGNMENT {
 		p.advance()
@@ -66,7 +76,11 @@ func parseVarDecl(p *parser) ast.Stmt {
 	}
 
 	if isConstant && assignmentValue == nil {
-		p.error("Cannot define constant variable without providing default value.", nil)
+		p.errors = append(p.errors, "Cannot define constant variable without providing default value.")
+	}
+
+	if assignmentValue != nil {
+		assignmentValue = ast.UndefinedLiteral{}
 	}
 
 	return ast.VarDeclStmt{
@@ -80,25 +94,82 @@ func parseVarDecl(p *parser) ast.Stmt {
 	}
 }
 
+func parseParams(p *parser) ([]ast.Param, ast.Error) {
+	params := make([]ast.Param, 0)
+	for p.hasTokens() && p.currentTokenKind() != lexer.CLOSE_PAREN {
+		expectedName := p.expect(lexer.IDENTIFIER)
+		name := expectedName.Value
+
+		if expectedName.Kind == lexer.ERROR {
+			return params, ast.Error{
+				Position: &expectedName.Position,
+			}
+		}
+		expected := p.expect(lexer.COLON)
+		if expected.Kind == lexer.ERROR {
+			return params, ast.Error{
+				Position: &expected.Position,
+			}
+		}
+
+		params = append(params, ast.Param{
+			Name: name,
+			Type: parseType(p, defaultBP),
+		})
+
+		if p.currentTokenKind() != lexer.CLOSE_PAREN {
+			expected := p.expectError(lexer.COMMA, fmt.Sprintf("Expected ',' between parameters in function declaration at %s", p.currentToken().Position.String()))
+			if expected.Kind == lexer.ERROR {
+				return params, ast.Error{
+					Position: &expected.Position,
+				}
+			}
+		}
+	}
+
+	return params, ast.Error{}
+}
+
 func parseFunDecl(p *parser) ast.Stmt {
 	startPos := p.advance().Position.StartPos
-	name := p.expect(lexer.IDENTIFIER).Value
+	expectedName := p.expect(lexer.IDENTIFIER)
+	name := expectedName.Value
+	if expectedName.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expectedName.Position,
+		}
+	}
 
-	p.expect(lexer.OPEN_PAREN)
-	params := parseParams(p)
-	p.expect(lexer.CLOSE_PAREN)
+	expectedOpenParen := p.expect(lexer.OPEN_PAREN)
+	if expectedOpenParen.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expectedOpenParen.Position,
+		}
+	}
+	params, err := parseParams(p)
+	if err.Position != nil {
+		return ast.Error{
+			Position: err.Position,
+		}
+	}
+	expectedCloseParen := p.expect(lexer.CLOSE_PAREN)
+	if expectedCloseParen.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expectedCloseParen.Position,
+		}
+	}
 
 	var returnType ast.Type = ast.VoidKeyword{}
 	if p.currentTokenKind() == lexer.COLON {
 		p.advance()
-		returnType = parse_type(p, defalt_bp)
+		returnType = parseType(p, defaultBP)
 	}
 
 	var body []ast.Stmt
 
 	var endPos int
 	if p.currentTokenKind() == lexer.OPEN_CURLY {
-		blockStmt := ast.ExpectStmt[ast.BlockStmt](parseBlockStmt(p))
+		blockStmt := parseBlockStmt(p).(ast.BlockStmt)
 		endPos = blockStmt.Pos().EndPos
 		body = blockStmt.Body
 	} else {
@@ -127,7 +198,7 @@ func parseIfStmt(p *parser) ast.Stmt {
 		p.advance()
 	}
 
-	consequentBlockStmt := ast.ExpectStmt[ast.BlockStmt](parseBlockStmt(p))
+	consequentBlockStmt := parseBlockStmt(p).(ast.BlockStmt)
 	var endPos int = consequentBlockStmt.Pos().EndPos
 
 	var alternate []ast.Stmt
@@ -137,7 +208,7 @@ func parseIfStmt(p *parser) ast.Stmt {
 		if p.currentTokenKind() == lexer.IF {
 			alternate = []ast.Stmt{parseIfStmt(p)}
 		} else {
-			alternateBlockStmt := ast.ExpectStmt[ast.BlockStmt](parseBlockStmt(p))
+			alternateBlockStmt := parseBlockStmt(p).(ast.BlockStmt)
 			alternate = alternateBlockStmt.Body
 			endPos = alternateBlockStmt.Pos().EndPos
 		}
@@ -156,11 +227,22 @@ func parseIfStmt(p *parser) ast.Stmt {
 
 func parseTypeDecl(p *parser) ast.Stmt {
 	startPos := p.advance().Position.StartPos
-	alias := p.expect(lexer.IDENTIFIER).Value
+	aliasExpected := p.expect(lexer.IDENTIFIER)
+	alias := aliasExpected.Value
+	if aliasExpected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &aliasExpected.Position,
+		}
+	}
 
-	p.expect(lexer.ASSIGNMENT)
+	expected := p.expect(lexer.ASSIGNMENT)
+	if expected.Kind == lexer.ERROR {
+		return ast.Error{
+			Position: &expected.Position,
+		}
+	}
 
-	aliasType := parse_type(p, defalt_bp)
+	aliasType := parseType(p, defaultBP)
 
 	return ast.TypeAliasDecl{
 		Name: alias,
